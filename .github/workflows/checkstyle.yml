@@ -19,7 +19,8 @@ jobs:
     - name: Set up JDK
       uses: actions/setup-java@v3
       with:
-        java-version: '17'  # Usa la versione di Java che il tuo progetto richiede
+        java-version: '17'
+        distribution: 'adoptopenjdk'
 
     - name: Install Checkstyle
       run: |
