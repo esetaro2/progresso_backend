@@ -24,7 +24,7 @@ jobs:
 
     - name: Install Checkstyle
       run: |
-        wget https://github.com/checkstyle/checkstyle/releases/download/checkstyle-9.3/checkstyle-9.3-all.jar -O checkstyle.jar
+        wget https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.3/checkstyle-10.3-all.jar -O checkstyle.jar
 
     - name: Run Checkstyle
       run: |
