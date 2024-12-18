@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -31,16 +32,38 @@ public class SecurityConfig {
     this.jwtRequestFilter = jwtRequestFilter;
   }
 
+  @SuppressWarnings("checkstyle:CommentsIndentation")
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
         .csrf(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers("/auth/login").permitAll()
-            .requestMatchers("/auth/register").hasAuthority("admin")
-            .requestMatchers("/admin/**").hasAuthority("admin")
-            .requestMatchers("/projectmanager/**").hasAuthority("projectManager")
-            .requestMatchers("/teammember/**").hasAuthority("teamMember")
+            .requestMatchers("/auth/register").hasAuthority("ADMIN")
+//            .requestMatchers("/auth/register").permitAll()
+
+            .requestMatchers("/admin/**").hasAuthority("ADMIN")
+
+            .requestMatchers("/projectmanager/**").hasAuthority("PROJECTMANAGER")
+
+            .requestMatchers("/teammember/**").hasAuthority("TEAMMEMBER")
+
+            .requestMatchers(HttpMethod.GET, "/team").permitAll()
+            .requestMatchers(HttpMethod.GET, "/team/{id}").permitAll()
+            .requestMatchers(HttpMethod.GET, "/team/name").permitAll()
+            .requestMatchers(HttpMethod.GET, "/team/projectManager/{id}").permitAll()
+            .requestMatchers(HttpMethod.GET, "/team/teamMember/{id}").permitAll()
+
+            .requestMatchers(HttpMethod.POST, "/team").hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+            .requestMatchers(HttpMethod.POST, "/team/{id}/members")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+            .requestMatchers(HttpMethod.PUT, "/team/{id}")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+            .requestMatchers(HttpMethod.PUT, "/team/{id}/removeMembers")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+            .requestMatchers(HttpMethod.PUT, "/team/{id}/projectManager").hasAuthority("ADMIN")
+            .requestMatchers(HttpMethod.PUT, "/team/{id}/deactivate").hasAuthority("ADMIN")
+
             .anyRequest().authenticated())
         .cors(withDefaults());
 
@@ -48,6 +71,7 @@ public class SecurityConfig {
 
     return http.build();
   }
+
 
   @Bean
   public PasswordEncoder passwordEncoder() {
