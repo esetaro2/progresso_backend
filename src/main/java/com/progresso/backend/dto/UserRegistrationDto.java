@@ -1,5 +1,7 @@
 package com.progresso.backend.dto;
 
+import com.progresso.backend.enumeration.RoleType;
+import com.progresso.backend.model.User;
 import com.progresso.backend.validation.Age;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
@@ -7,7 +9,13 @@ import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserRegistrationDto {
 
   @NotEmpty(message = "The first name cannot be empty.")
@@ -78,128 +86,18 @@ public class UserRegistrationDto {
   @NotEmpty(message = "The role cannot be empty.")
   private String role;
 
-  public UserRegistrationDto() {
-  }
-
-  public UserRegistrationDto(String firstName, String lastName, LocalDate birthDate,
-      String phoneNumber, String streetAddress, String city, String stateProvinceRegion,
-      String country, String zipCode, String email, String role) {
-    this.firstName = firstName;
-    this.lastName = lastName;
-    this.birthDate = birthDate;
-    this.phoneNumber = phoneNumber;
-    this.streetAddress = streetAddress;
-    this.city = city;
-    this.stateProvinceRegion = stateProvinceRegion;
-    this.country = country;
-    this.zipCode = zipCode;
-    this.email = email;
-    this.role = role;
-  }
-
-  public String getFirstName() {
-    return firstName;
-  }
-
-  public void setFirstName(String firstName) {
-    this.firstName = firstName;
-  }
-
-  public String getLastName() {
-    return lastName;
-  }
-
-  public void setLastName(String lastName) {
-    this.lastName = lastName;
-  }
-
-  public LocalDate getBirthDate() {
-    return birthDate;
-  }
-
-  public void setBirthDate(LocalDate birthDate) {
-    this.birthDate = birthDate;
-  }
-
-  public String getPhoneNumber() {
-    return phoneNumber;
-  }
-
-  public void setPhoneNumber(String phoneNumber) {
-    this.phoneNumber = phoneNumber;
-  }
-
-  public String getStreetAddress() {
-    return streetAddress;
-  }
-
-  public void setStreetAddress(String streetAddress) {
-    this.streetAddress = streetAddress;
-  }
-
-  public String getCity() {
-    return city;
-  }
-
-  public void setCity(String city) {
-    this.city = city;
-  }
-
-  public String getStateProvinceRegion() {
-    return stateProvinceRegion;
-  }
-
-  public void setStateProvinceRegion(String stateProvinceRegion) {
-    this.stateProvinceRegion = stateProvinceRegion;
-  }
-
-  public String getCountry() {
-    return country;
-  }
-
-  public void setCountry(String country) {
-    this.country = country;
-  }
-
-  public String getZipCode() {
-    return zipCode;
-  }
-
-  public void setZipCode(String zipCode) {
-    this.zipCode = zipCode;
-  }
-
-  public String getEmail() {
-    return email;
-  }
-
-  public void setEmail(String email) {
-    this.email = email;
-  }
-
-  public String getRole() {
-    return role;
-  }
-
-  public void setRole(String role) {
-    this.role = role;
-  }
-
-  @Override
-  public String toString() {
-    return "UserRegistrationDto{"
-        +
-        "firstName='" + firstName + '\''
-        + ", lastName='" + lastName + '\''
-        + ", birthDate=" + birthDate
-        + ", phoneNumber='" + phoneNumber + '\''
-        + ", streetAddress='" + streetAddress + '\''
-        + ", city='" + city + '\''
-        + ", stateProvinceRegion='" + stateProvinceRegion + '\''
-        + ", country='" + country + '\''
-        + ", zipCode='" + zipCode + '\''
-        + ", email='" + email + '\''
-        + ", role=" + role
-        + '}';
+  public User toEntity(User user) {
+    user.setFirstName(firstName);
+    user.setLastName(lastName);
+    user.setBirthDate(birthDate);
+    user.setPhoneNumber(phoneNumber);
+    user.setStreetAddress(streetAddress);
+    user.setCity(city);
+    user.setStateProvinceRegion(stateProvinceRegion);
+    user.setCountry(country);
+    user.setZipCode(zipCode);
+    user.setEmail(email);
+    user.setRole(RoleType.valueOf(role.toUpperCase()));
+    return user;
   }
 }
