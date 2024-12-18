@@ -33,15 +33,11 @@ public class AuthController {
     return ResponseEntity.ok(userDto);
   }
 
-  @PreAuthorize("hasAuthority('admin')")
+  @PreAuthorize("hasAuthority('ADMIN')")
   @PostMapping("/register")
   public ResponseEntity<String> registerUser(
       @Valid @RequestBody UserRegistrationDto registrationDto) {
     UserResponseDto userResponseDto = authService.registerUser(registrationDto);
-    if (userResponseDto != null) {
-      return ResponseEntity.status(HttpStatus.CREATED).body(userResponseDto.toString());
-    } else {
-      return ResponseEntity.badRequest().body("Email already registered");
-    }
+    return ResponseEntity.status(HttpStatus.CREATED).body(userResponseDto.toString());
   }
 }
