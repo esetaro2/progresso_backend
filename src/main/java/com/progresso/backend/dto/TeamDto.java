@@ -11,6 +11,8 @@ import lombok.Data;
 @Data
 public class TeamDto {
 
+  private Long id;
+
   @NotEmpty(message = "Name cannot be empty.")
   @Size(max = 100, message = "Name cannot exceed 100 characters.")
   private String name;
@@ -25,6 +27,7 @@ public class TeamDto {
 
   public Team toEntity(User projectManager) {
     Team team = new Team();
+    team.setId(id);
     team.setName(this.name);
     team.setIsActive(this.isActive);
     team.setProjectManager(projectManager);

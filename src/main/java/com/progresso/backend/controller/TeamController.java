@@ -1,11 +1,11 @@
 package com.progresso.backend.controller;
 
-import com.progresso.backend.dto.MembersDto;
 import com.progresso.backend.dto.TeamDto;
 import com.progresso.backend.service.TeamService;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/team")
+@RequestMapping("/api/teams")
 @Validated
 public class TeamController {
 
@@ -32,33 +32,68 @@ public class TeamController {
   }
 
   @GetMapping
-  public ResponseEntity<List<TeamDto>> getTeams() {
-    List<TeamDto> teamsDto = teamService.getAllTeams();
+  public ResponseEntity<Page<TeamDto>> getAllTeams(Pageable pageable) {
+    Page<TeamDto> teamsDto = teamService.getAllTeams(pageable);
     return ResponseEntity.ok(teamsDto);
   }
 
-  @GetMapping("/{id}")
-  public ResponseEntity<TeamDto> getTeamById(@PathVariable Long id) {
-    TeamDto teamDto = teamService.getTeamById(id);
+  @GetMapping("/{teamId}")
+  public ResponseEntity<TeamDto> getTeamById(@PathVariable Long teamId) {
+    TeamDto teamDto = teamService.getTeamById(teamId);
     return ResponseEntity.ok(teamDto);
   }
 
-  @GetMapping("/name")
-  public ResponseEntity<TeamDto> getTeamByName(@RequestParam String name) {
+  @GetMapping("/search/by-name/{name}")
+  public ResponseEntity<TeamDto> getTeamByName(@PathVariable String name) {
     TeamDto teamDto = teamService.getTeamByName(name);
     return ResponseEntity.ok(teamDto);
   }
 
-  @GetMapping("/projectManager/{id}")
-  public ResponseEntity<List<TeamDto>> getTeamByProjectManager(@PathVariable Long id) {
-    List<TeamDto> teamsDto = teamService.getTeamsByProjectManagerId(id);
+  @GetMapping("/project-managers/{projectManagerId}")
+  public ResponseEntity<Page<TeamDto>> getTeamsByProjectManager(
+      @PathVariable Long projectManagerId, Pageable pageable) {
+    Page<TeamDto> teamsDto = teamService.getTeamsByProjectManagerId(projectManagerId, pageable);
     return ResponseEntity.ok(teamsDto);
   }
 
-  @GetMapping("/teamMember/{id}")
-  public ResponseEntity<List<TeamDto>> getTeamByTeamMember(@PathVariable Long id) {
-    List<TeamDto> teamsDto = teamService.getTeamsByMemberId(id);
+  @GetMapping("/members/{memberId}")
+  public ResponseEntity<Page<TeamDto>> getTeamsByTeamMember(
+      @PathVariable Long memberId, Pageable pageable) {
+    Page<TeamDto> teamsDto = teamService.getTeamsByMemberId(memberId, pageable);
     return ResponseEntity.ok(teamsDto);
+  }
+
+  @GetMapping("/filter/by-status")
+  public ResponseEntity<Page<TeamDto>> getTeamsByIsActive(
+      @RequestParam Boolean isActive, Pageable pageable) {
+    Page<TeamDto> teamsDto = teamService.getTeamsByIsActive(isActive, pageable);
+    return ResponseEntity.ok(teamsDto);
+  }
+
+  @GetMapping("/project-managers/{projectManagerId}/filter/by-status")
+  public ResponseEntity<Page<TeamDto>> getTeamsByProjectManagerAndStatus(
+      @PathVariable Long projectManagerId, @RequestParam Boolean isActive, Pageable pageable) {
+    Page<TeamDto> teamsDto = teamService.getTeamByProjectManagerIdAndIsActive(
+        projectManagerId, isActive, pageable);
+    return ResponseEntity.ok(teamsDto);
+  }
+
+  @GetMapping("/search/advanced")
+  public ResponseEntity<Page<TeamDto>> findTeamsByAdvancedFilters(
+      @RequestParam(required = false) String name,
+      @RequestParam(required = false) Boolean isActive,
+      @RequestParam(required = false) Long projectManagerId,
+      @RequestParam(required = false) Long memberUserId,
+      Pageable pageable) {
+    Page<TeamDto> teams = teamService.findTeamsByAdvancedFilters(
+        name, isActive, projectManagerId, memberUserId, pageable);
+    return ResponseEntity.ok(teams);
+  }
+
+  @GetMapping("/{teamId}/members/active/count")
+  public ResponseEntity<Long> countActiveMembersByTeamId(@PathVariable Long teamId) {
+    Long count = teamService.countActiveMembersByTeamId(teamId);
+    return ResponseEntity.ok(count);
   }
 
   @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
@@ -69,41 +104,26 @@ public class TeamController {
   }
 
   @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
-  @PostMapping("/{id}/members")
-  public ResponseEntity<TeamDto> addMembersToTeam(@PathVariable Long id,
-      @Valid @RequestBody MembersDto membersDto) {
-    TeamDto teamDto = teamService.addMembersToTeam(id, membersDto);
-    return ResponseEntity.ok(teamDto);
-  }
-
-  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
-  @PutMapping("/{id}")
-  public ResponseEntity<TeamDto> updateTeam(@PathVariable Long id,
-      @Valid @RequestBody TeamDto teamDto) {
-    TeamDto updatedTeamDto = teamService.updateTeam(id, teamDto);
+  @PutMapping("/{teamId}")
+  public ResponseEntity<TeamDto> updateTeam(
+      @PathVariable Long teamId, @Valid @RequestBody TeamDto teamDto) {
+    TeamDto updatedTeamDto = teamService.updateTeam(teamId, teamDto);
     return ResponseEntity.ok(updatedTeamDto);
   }
 
-  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
-  @PutMapping("/{id}/removeMembers")
-  public ResponseEntity<TeamDto> removeMembersFromTeam(@PathVariable Long id,
-      @Valid @RequestBody MembersDto membersDto) {
-    TeamDto teamDto = teamService.removeMembersFromTeam(id, membersDto);
+  @PreAuthorize("hasAuthority('ADMIN')")
+  @PutMapping("/{teamId}/project-manager")
+  public ResponseEntity<TeamDto> changeProjectManager(
+      @PathVariable Long teamId, @RequestParam Long projectManagerId) {
+    TeamDto teamDto = teamService.changeProjectManager(teamId, projectManagerId);
     return ResponseEntity.ok(teamDto);
   }
 
   @PreAuthorize("hasAuthority('ADMIN')")
-  @PutMapping("/{id}/projectManager")
-  public ResponseEntity<TeamDto> changeProjectManager(@PathVariable Long id,
-      @RequestParam Long projectManagerId) {
-    TeamDto teamDto = teamService.changeProjectManager(id, projectManagerId);
-    return ResponseEntity.ok(teamDto);
-  }
-
-  @PreAuthorize("hasAuthority('ADMIN')")
-  @PutMapping("/{id}/deactivate")
-  public ResponseEntity<TeamDto> deactivateTeam(@PathVariable Long id) {
-    TeamDto teamDto = teamService.deactivateTeam(id);
+  @PutMapping("/{teamId}/deactivate")
+  public ResponseEntity<TeamDto> deactivateTeam(@PathVariable Long teamId) {
+    TeamDto teamDto = teamService.deactivateTeam(teamId);
     return ResponseEntity.ok(teamDto);
   }
 }
+
