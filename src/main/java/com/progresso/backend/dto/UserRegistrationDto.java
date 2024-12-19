@@ -38,7 +38,7 @@ public class UserRegistrationDto {
 
   @NotEmpty(message = "The phone number cannot be empty.")
   @Pattern(
-      regexp = "^(\\+\\d{1,3}[- ]?)?\\d{10}$",
+      regexp = "^\\d{10}$",
       message = "The phone number must be in a valid international format.")
   private String phoneNumber;
 

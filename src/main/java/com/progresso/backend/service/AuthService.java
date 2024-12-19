@@ -13,7 +13,8 @@ import com.progresso.backend.repository.UserRepository;
 import com.progresso.backend.security.JwtUtil;
 import com.progresso.backend.security.PasswordGenerator;
 import jakarta.transaction.Transactional;
-import java.util.Optional;
+import org.apache.commons.lang3.EnumUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -48,8 +49,9 @@ public class AuthService {
       default -> throw new InvalidRoleException("Invalid role");
     };
 
-    return String.format("%s.%s.%s%d@progresso.com", firstName.toLowerCase().charAt(0),
-        lastName.toLowerCase(), roleInitials, count + 1);
+    return String.format("%s.%s.%s%d@progresso.com",
+        StringUtils.lowerCase(firstName.substring(0, 1)), StringUtils.lowerCase(lastName),
+        roleInitials, count + 1);
   }
 
   @Transactional
@@ -64,7 +66,12 @@ public class AuthService {
         generateUsername(user.getFirstName(), user.getLastName(),
             user.getRole()));
 
-    RoleType role = RoleType.valueOf(userRegistrationDto.getRole().toUpperCase());
+    String roleString = userRegistrationDto.getRole().toUpperCase();
+    if (!EnumUtils.isValidEnum(RoleType.class, roleString)) {
+      throw new InvalidRoleException("Invalid role: " + roleString);
+    }
+
+    RoleType role = EnumUtils.getEnum(RoleType.class, roleString);
     user.setRole(role);
 
     String password = PasswordGenerator.generateSecurePassword();
@@ -83,18 +90,17 @@ public class AuthService {
   }
 
   public UserResponseDto authenticateUser(UserLoginDto loginDto) {
-    Optional<User> userOptional = userRepository.findByUsername(loginDto.getUsername());
-    if (userOptional.isPresent()) {
-      User user = userOptional.get();
-      if (passwordEncoder.matches(loginDto.getPassword(), user.getPassword())) {
-        String token = jwtUtil.generateToken(user);
-        return userService.convertToDtoToken(user, token);
-      } else {
-        throw new InvalidPasswordException(
-            "Invalid password for username: " + loginDto.getUsername());
-      }
-    } else {
-      throw new UserNotFoundException("User not found with username: " + loginDto.getUsername());
-    }
+    return userRepository.findByUsername(loginDto.getUsername())
+        .map(user -> {
+          if (passwordEncoder.matches(loginDto.getPassword(), user.getPassword())) {
+            String token = jwtUtil.generateToken(user);
+            return userService.convertToDtoToken(user, token);
+          } else {
+            throw new InvalidPasswordException(
+                "Invalid password for username: " + loginDto.getUsername());
+          }
+        })
+        .orElseThrow(() -> new UserNotFoundException(
+            "User not found with username: " + loginDto.getUsername()));
   }
 }

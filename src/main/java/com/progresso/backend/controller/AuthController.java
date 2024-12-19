@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 @Validated
 public class AuthController {
 
@@ -28,16 +28,16 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public ResponseEntity<UserResponseDto> loginUser(@Valid @RequestBody UserLoginDto loginDto) {
+  public ResponseEntity<UserResponseDto> login(@Valid @RequestBody UserLoginDto loginDto) {
     UserResponseDto userDto = authService.authenticateUser(loginDto);
     return ResponseEntity.ok(userDto);
   }
 
   @PreAuthorize("hasAuthority('ADMIN')")
   @PostMapping("/register")
-  public ResponseEntity<String> registerUser(
+  public ResponseEntity<UserResponseDto> register(
       @Valid @RequestBody UserRegistrationDto registrationDto) {
     UserResponseDto userResponseDto = authService.registerUser(registrationDto);
-    return ResponseEntity.status(HttpStatus.CREATED).body(userResponseDto.toString());
+    return ResponseEntity.status(HttpStatus.CREATED).body(userResponseDto);
   }
 }
