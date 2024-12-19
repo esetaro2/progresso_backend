@@ -38,31 +38,44 @@ public class SecurityConfig {
     http
         .csrf(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers("/auth/login").permitAll()
-            .requestMatchers("/auth/register").hasAuthority("ADMIN")
-//            .requestMatchers("/auth/register").permitAll()
+            .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+            .requestMatchers("/api/projectmanager/**").hasAuthority("PROJECTMANAGER")
+            .requestMatchers("/api/teammember/**").hasAuthority("TEAMMEMBER")
 
-            .requestMatchers("/admin/**").hasAuthority("ADMIN")
+            .requestMatchers("/api/auth/login").permitAll()
+            .requestMatchers("/api/auth/register").hasAuthority("ADMIN")
+//            .requestMatchers("/api/auth/register").permitAll()
 
-            .requestMatchers("/projectmanager/**").hasAuthority("PROJECTMANAGER")
+            .requestMatchers(HttpMethod.GET, "/api/users").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/users/role/{roleName}").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/users/search").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/users/{userId}/members").permitAll()
 
-            .requestMatchers("/teammember/**").hasAuthority("TEAMMEMBER")
-
-            .requestMatchers(HttpMethod.GET, "/team").permitAll()
-            .requestMatchers(HttpMethod.GET, "/team/{id}").permitAll()
-            .requestMatchers(HttpMethod.GET, "/team/name").permitAll()
-            .requestMatchers(HttpMethod.GET, "/team/projectManager/{id}").permitAll()
-            .requestMatchers(HttpMethod.GET, "/team/teamMember/{id}").permitAll()
-
-            .requestMatchers(HttpMethod.POST, "/team").hasAnyAuthority("ADMIN", "PROJECTMANAGER")
-            .requestMatchers(HttpMethod.POST, "/team/{id}/members")
+            .requestMatchers(HttpMethod.GET, "/api/teams").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/teams/{teamId}").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/teams/search/by-name/{name}").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/teams/project-managers/{projectManagerId}")
+            .permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/teams/members/{memberId}").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/teams/filter/by-status").permitAll()
+            .requestMatchers(HttpMethod.GET,
+                "/api/teams/project-managers/{projectManagerId}/filter/by-status").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/teams/search/advanced").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/teams/{teamId}/members/active/count").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/teams")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
-            .requestMatchers(HttpMethod.PUT, "/team/{id}")
+            .requestMatchers(HttpMethod.PUT, "/api/teams/{teamId}")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
-            .requestMatchers(HttpMethod.PUT, "/team/{id}/removeMembers")
+            .requestMatchers(HttpMethod.PUT, "/api/teams/{teamId}/project-manager")
+            .hasAuthority("ADMIN")
+            .requestMatchers(HttpMethod.PUT, "/api/teams/{teamId}/deactivate")
+            .hasAuthority("ADMIN")
+
+            .requestMatchers(HttpMethod.GET, "/api/teams/{teamId}/members/active").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/teams/{teamId}/members")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
-            .requestMatchers(HttpMethod.PUT, "/team/{id}/projectManager").hasAuthority("ADMIN")
-            .requestMatchers(HttpMethod.PUT, "/team/{id}/deactivate").hasAuthority("ADMIN")
+            .requestMatchers(HttpMethod.PUT, "/api/teams/{teamId}/removeMembers")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
 
             .anyRequest().authenticated())
         .cors(withDefaults());

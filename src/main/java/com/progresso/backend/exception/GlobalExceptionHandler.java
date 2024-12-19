@@ -47,6 +47,13 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
   }
 
+  @ExceptionHandler(MaxActiveTeamsExceededException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ResponseEntity<String> handleMaxActiveTeamsExceededException(
+      final MaxActiveTeamsExceededException e) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+  }
+
   @ExceptionHandler(TeamMemberAlreadyActiveException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   public ResponseEntity<String> handleTeamMemberAlreadyActiveException(
