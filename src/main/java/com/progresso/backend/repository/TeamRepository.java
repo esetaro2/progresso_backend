@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TeamRepository extends JpaRepository<Team, Long> {
 
-  Optional<Team> findByName(String name);
+  Optional<Team> findByNameIgnoreCase(String name);
 
   List<Team> findByProjectManagerId(Long id);
 
