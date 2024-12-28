@@ -1,0 +1,201 @@
+package com.progresso.backend.controller;
+
+import com.progresso.backend.dto.TaskDto;
+import com.progresso.backend.enumeration.Status;
+import com.progresso.backend.service.TaskService;
+import java.time.LocalDate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/tasks")
+public class TaskController {
+
+  private final TaskService taskService;
+
+  @Autowired
+  public TaskController(TaskService taskService) {
+    this.taskService = taskService;
+  }
+
+  @GetMapping("/status/{status}")
+  public ResponseEntity<Page<TaskDto>> getTasksByStatus(@PathVariable Status status,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.findByStatus(status, pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/priority/{priority}")
+  public ResponseEntity<Page<TaskDto>> getTasksByPriority(@PathVariable String priority,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.findByPriority(priority, pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/dueDateBefore/{dueDate}")
+  public ResponseEntity<Page<TaskDto>> getTasksByDueDateBefore(@PathVariable String dueDate,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.findByDueDateBefore(LocalDate.parse(dueDate), pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/completionDateAfter/{completionDate}")
+  public ResponseEntity<Page<TaskDto>> getTasksByCompletionDateAfter(
+      @PathVariable String completionDate, Pageable pageable) {
+    Page<TaskDto> tasks = taskService.findByCompletionDateAfter(LocalDate.parse(completionDate),
+        pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/project/{projectId}")
+  public ResponseEntity<Page<TaskDto>> getTasksByProjectId(@PathVariable Long projectId,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.findByProjectId(projectId, pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/project/{projectId}/status/{status}")
+  public ResponseEntity<Page<TaskDto>> getTasksByProjectIdAndStatus(@PathVariable Long projectId,
+      @PathVariable Status status, Pageable pageable) {
+    Page<TaskDto> tasks = taskService.findByProjectIdAndStatus(projectId, status, pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/project/{projectId}/name/{name}")
+  public ResponseEntity<Page<TaskDto>> getTasksByNameAndProjectId(@PathVariable String name,
+      @PathVariable Long projectId, Pageable pageable) {
+    Page<TaskDto> tasks = taskService.findByNameAndProjectId(name, projectId, pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/project/{projectId}/completed")
+  public ResponseEntity<Page<TaskDto>> getCompletedTasksByProjectId(@PathVariable Long projectId,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.findCompletedTasksByProjectId(projectId, pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/user/{userId}")
+  public ResponseEntity<Page<TaskDto>> getTasksByUser(
+      @PathVariable Long userId,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.findTasksByUser(userId, pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/user/{userId}/status/{status}")
+  public ResponseEntity<Page<TaskDto>> getTasksByUserAndStatus(
+      @PathVariable Long userId,
+      @PathVariable Status status,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.findTasksByUserAndStatus(userId, status, pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/user/{userId}/overdue")
+  public ResponseEntity<Page<TaskDto>> getOverdueTasksByUser(
+      @PathVariable Long userId,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.findOverdueTasksByUser(userId, pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/assigned-user/{userId}/completion-date-before/{completionDate}")
+  public ResponseEntity<Page<TaskDto>> getTasksByAssignedUserIdAndCompletionDateBefore(
+      @PathVariable Long userId,
+      @PathVariable String completionDate,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.getTasksByAssignedUserIdAndCompletionDateBefore(userId,
+        LocalDate.parse(completionDate), pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/assigned-user/{userId}/start-date-after/{startDate}")
+  public ResponseEntity<Page<TaskDto>> getTasksByAssignedUserIdAndStartDateAfter(
+      @PathVariable Long userId,
+      @PathVariable String startDate,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.getTasksByAssignedUserIdAndStartDateAfter(userId,
+        LocalDate.parse(startDate), pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/project/{projectId}/completion-date-before/{completionDate}")
+  public ResponseEntity<Page<TaskDto>> getTasksByProjectIdAndCompletionDateBefore(
+      @PathVariable Long projectId,
+      @PathVariable String completionDate,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.getTasksByProjectIdAndCompletionDateBefore(projectId,
+        LocalDate.parse(completionDate), pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @GetMapping("/start-date-between/{startDate}/{endDate}")
+  public ResponseEntity<Page<TaskDto>> getTasksByStartDateBetween(
+      @PathVariable String startDate,
+      @PathVariable String endDate,
+      Pageable pageable) {
+    Page<TaskDto> tasks = taskService.getTasksByStartDateBetween(LocalDate.parse(startDate),
+        LocalDate.parse(endDate), pageable);
+    return ResponseEntity.ok(tasks);
+  }
+
+  @PostMapping
+  public ResponseEntity<TaskDto> createTask(@RequestBody TaskDto taskDto) {
+    TaskDto createdTask = taskService.createTask(taskDto);
+    return ResponseEntity.status(HttpStatus.CREATED).body(createdTask);
+  }
+
+  @PutMapping("/{taskId}")
+  public ResponseEntity<TaskDto> updateTask(@PathVariable Long taskId,
+      @RequestBody TaskDto taskDto) {
+    TaskDto updatedTask = taskService.updateTask(taskId, taskDto);
+    return ResponseEntity.ok(updatedTask);
+  }
+
+  @PatchMapping("/{taskId}/complete")
+  public ResponseEntity<TaskDto> completeTask(@PathVariable Long taskId) {
+    TaskDto completedTask = taskService.completeTask(taskId);
+    return ResponseEntity.ok(completedTask);
+  }
+
+  @PostMapping("/{taskId}/assign/{userId}")
+  public ResponseEntity<TaskDto> assignTaskToUser(@PathVariable Long taskId,
+      @PathVariable Long userId) {
+    TaskDto assignedTask = taskService.assignTaskToTeamMember(taskId, userId);
+    return ResponseEntity.ok(assignedTask);
+  }
+
+  @PostMapping("/{taskId}/reassign/{userId}")
+  public ResponseEntity<TaskDto> reassignTaskToUser(@PathVariable Long taskId,
+      @PathVariable Long userId) {
+    TaskDto reassignedTask = taskService.reassignTaskToTeamMember(taskId, userId);
+    return ResponseEntity.ok(reassignedTask);
+  }
+
+  @PostMapping("/project/{projectId}/task/{taskId}")
+  public ResponseEntity<TaskDto> addTaskToProject(@PathVariable Long projectId,
+      @PathVariable Long taskId) {
+    TaskDto taskDto = taskService.addTaskToProject(projectId, taskId);
+    return ResponseEntity.ok(taskDto);
+  }
+
+  @DeleteMapping("/project/{projectId}/task/{taskId}")
+  public ResponseEntity<TaskDto> removeTaskFromProject(@PathVariable Long projectId,
+      @PathVariable Long taskId) {
+    TaskDto taskDto = taskService.removeTaskFromProject(projectId, taskId);
+    return ResponseEntity.ok(taskDto);
+  }
+}
