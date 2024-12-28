@@ -1,21 +1,18 @@
 package com.progresso.backend.service;
 
 import com.progresso.backend.dto.TeamDto;
-import com.progresso.backend.enumeration.RoleType;
+import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.exception.InvalidRoleException;
-import com.progresso.backend.exception.MaxActiveTeamsExceededException;
 import com.progresso.backend.exception.NoDataFoundException;
 import com.progresso.backend.exception.TeamNameAlreadyExistsException;
 import com.progresso.backend.exception.TeamNotFoundException;
 import com.progresso.backend.exception.UserNotFoundException;
+import com.progresso.backend.model.Project;
 import com.progresso.backend.model.Team;
-import com.progresso.backend.model.TeamMember;
 import com.progresso.backend.model.User;
-import com.progresso.backend.repository.TeamMemberRepository;
 import com.progresso.backend.repository.TeamRepository;
 import com.progresso.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,14 +24,11 @@ import org.springframework.stereotype.Service;
 public class TeamService {
 
   private final TeamRepository teamRepository;
-  private final TeamMemberRepository teamMemberRepository;
   private final UserRepository userRepository;
 
   @Autowired
-  public TeamService(TeamRepository teamRepository, TeamMemberRepository teamMemberRepository,
-      UserRepository userRepository) {
+  public TeamService(TeamRepository teamRepository, UserRepository userRepository) {
     this.teamRepository = teamRepository;
-    this.teamMemberRepository = teamMemberRepository;
     this.userRepository = userRepository;
   }
 
@@ -42,15 +36,19 @@ public class TeamService {
     TeamDto teamDto = new TeamDto();
     teamDto.setId(team.getId());
     teamDto.setName(team.getName());
-    teamDto.setIsActive(team.getIsActive());
-    teamDto.setProjectManagerId(team.getProjectManager().getId());
 
-    teamDto.setMemberIds(
-        (team.getMembers() == null || team.getMembers().isEmpty())
+    teamDto.setTeamMemberIds(
+        (team.getTeamMembers() == null || team.getTeamMembers().isEmpty())
             ? new ArrayList<>()
-            : team.getMembers().stream()
-                .map(TeamMember::getUser)
+            : team.getTeamMembers().stream()
                 .map(User::getId)
+                .toList()
+    );
+    teamDto.setProjectIds(
+        (team.getProjects() == null || team.getProjects().isEmpty())
+            ? new ArrayList<>()
+            : team.getProjects().stream()
+                .map(Project::getId)
                 .toList()
     );
 
@@ -64,39 +62,6 @@ public class TeamService {
 
     return convertToDto(team);
   }
-
-  public Page<TeamDto> getTeamsByProjectManagerId(Long projectManagerId, Pageable pageable) {
-    User projectManager = userRepository.findById(projectManagerId)
-        .orElseThrow(() -> new UserNotFoundException("Invalid user id: " + projectManagerId));
-
-    if (!projectManager.getRole().equals(RoleType.PROJECTMANAGER)) {
-      throw new InvalidRoleException("Invalid role: " + projectManager.getRole());
-    }
-    Page<Team> teams = teamRepository.findByProjectManagerId(projectManagerId, pageable);
-    if (!teams.hasContent()) {
-      throw new NoDataFoundException(
-          "No teams found with project manager id: " + projectManagerId);
-    }
-
-    return teams.map(this::convertToDto);
-  }
-
-  public Page<TeamDto> getTeamsByMemberId(Long memberId, Pageable pageable) {
-    User member = userRepository.findById(memberId)
-        .orElseThrow(() -> new UserNotFoundException("Invalid user id: " + memberId));
-
-    if (!member.getRole().equals(RoleType.TEAMMEMBER)) {
-      throw new InvalidRoleException("Invalid role: " + member.getRole());
-    }
-
-    Page<Team> teams = teamRepository.findByMembersUserId(memberId, pageable);
-    if (!teams.hasContent()) {
-      throw new NoDataFoundException("No teams found with member id: " + memberId);
-    }
-
-    return teams.map(this::convertToDto);
-  }
-
 
   public TeamDto getTeamById(Long id) {
     return teamRepository.findById(id)
@@ -113,82 +78,59 @@ public class TeamService {
     return teamsDto;
   }
 
-  public Page<TeamDto> getTeamsByIsActive(Boolean isActive, Pageable pageable) {
-    Page<TeamDto> teamsDto = teamRepository.findTeamsByIsActive(isActive, pageable)
-        .map(this::convertToDto);
-    if (!teamsDto.hasContent()) {
-      throw new NoDataFoundException("No teams found.");
+  public TeamDto getTeamByMemberId(Long userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+    if (!user.getRole().equals(Role.TEAMMEMBER)) {
+      throw new InvalidRoleException(
+          "User with ID " + userId + " does not have the required role.");
     }
 
-    return teamsDto;
+    Team team = teamRepository.findByTeamMemberId(userId)
+        .orElseThrow(() -> new TeamNotFoundException("No team found for user ID: " + userId));
+
+    return convertToDto(team);
   }
 
-  public Page<TeamDto> getTeamByProjectManagerIdAndIsActive(Long projectManagerId, Boolean isActive,
-      Pageable pageable) {
-    User projectManager = userRepository.findById(projectManagerId)
-        .orElseThrow(() -> new UserNotFoundException("Invalid user id: " + projectManagerId));
+  public Page<TeamDto> getTeamsWithProjects(Pageable pageable) {
+    Page<Team> teams = teamRepository.findTeamsWithProjects(pageable);
 
-    if (!projectManager.getRole().equals(RoleType.PROJECTMANAGER)) {
-      throw new InvalidRoleException("Invalid role: " + projectManager.getRole());
-    }
-
-    Page<TeamDto> teamsDto = teamRepository.findByProjectManagerIdAndIsActive(projectManagerId,
-        isActive, pageable).map(this::convertToDto);
-
-    if (!teamsDto.hasContent()) {
-      throw new NoDataFoundException("No teams found with project manager id: " + projectManagerId);
-    }
-
-    return teamsDto;
-  }
-
-  public Page<TeamDto> findTeamsByAdvancedFilters(
-      String name,
-      Boolean isActive,
-      Long projectManagerId,
-      Long memberUserId,
-      Pageable pageable) {
-
-    if (projectManagerId != null) {
-      User projectManager = userRepository.findById(projectManagerId)
-          .orElseThrow(
-              () -> new UserNotFoundException("Invalid project manager ID: " + projectManagerId));
-
-      if (!projectManager.getRole().equals(RoleType.PROJECTMANAGER)) {
-        throw new InvalidRoleException("User ID " + projectManagerId + " is not a Project Manager");
-      }
-    }
-
-    if (memberUserId != null) {
-      User member = userRepository.findById(memberUserId)
-          .orElseThrow(() -> new UserNotFoundException("Invalid member ID: " + memberUserId));
-
-      if (!member.getRole().equals(RoleType.TEAMMEMBER)) {
-        throw new InvalidRoleException("User ID " + memberUserId + " is not a Team Member");
-      }
-    }
-
-    Page<Team> teams = teamRepository.findTeamsByAdvancedFilters(
-        name != null ? name.toLowerCase() : null,
-        isActive,
-        projectManagerId,
-        memberUserId,
-        pageable
-    );
-
-    if (!teams.hasContent()) {
-      throw new NoDataFoundException("No teams found with the given filters");
+    if (teams.isEmpty()) {
+      throw new NoDataFoundException("No teams found with assigned projects.");
     }
 
     return teams.map(this::convertToDto);
   }
 
+  public Page<TeamDto> getTeamsWithMinMembers(int size, Pageable pageable) {
+    Page<Team> teams = teamRepository.findByTeamMembersSizeGreaterThan(size, pageable);
 
-  public Long countActiveMembersByTeamId(Long teamId) {
-    teamRepository.findById(teamId)
-        .orElseThrow(() -> new TeamNotFoundException("Invalid team id: " + teamId));
+    if (teams.isEmpty()) {
+      throw new NoDataFoundException("No teams found with more than " + size + " members.");
+    }
 
-    return teamRepository.countActiveMembersByTeamId(teamId);
+    return teams.map(this::convertToDto);
+  }
+
+  public Page<TeamDto> getTeamsWithoutMembers(Pageable pageable) {
+    Page<Team> teams = teamRepository.findTeamsWithoutMembers(pageable);
+
+    if (teams.isEmpty()) {
+      throw new NoDataFoundException("No teams found without members.");
+    }
+
+    return teams.map(this::convertToDto);
+  }
+
+  public Page<TeamDto> getTeamsByProjectId(Long projectId, Pageable pageable) {
+    Page<Team> teams = teamRepository.findTeamsByProjectId(projectId, pageable);
+
+    if (teams.isEmpty()) {
+      throw new NoDataFoundException("No teams found for project ID: " + projectId);
+    }
+
+    return teams.map(this::convertToDto);
   }
 
   @Transactional
@@ -198,23 +140,8 @@ public class TeamService {
           "A team with the name " + teamDto.getName() + " already exists.");
     }
 
-    User projectManager = userRepository.findById(teamDto.getProjectManagerId()).orElseThrow(
-        () -> new UserNotFoundException(
-            "Invalid project manager id: " + teamDto.getProjectManagerId()));
-
-    if (!projectManager.getRole().equals(RoleType.PROJECTMANAGER)) {
-      throw new InvalidRoleException(
-          "The user is not a project manager: " + projectManager.getUsername());
-    }
-
-    if (projectManager.getManagedTeams().stream()
-        .filter(Team::getIsActive).limit(6).count() == 6) {
-      throw new MaxActiveTeamsExceededException(
-          "The project manager cannot be active in more than 5 teams: "
-              + projectManager.getUsername());
-    }
-
-    Team team = teamDto.toEntity(projectManager);
+    Team team = new Team();
+    team.setName(teamDto.getName());
     team = teamRepository.save(team);
 
     return convertToDto(team);
@@ -225,25 +152,14 @@ public class TeamService {
     Team team = teamRepository.findById(id)
         .orElseThrow(() -> new TeamNotFoundException("Invalid team id: " + id));
 
-    if (!team.getIsActive()) {
-      throw new IllegalArgumentException("The team is not active: " + team.getName());
-    }
-
     if (teamRepository.existsByNameIgnoreCaseAndIdNot(teamDto.getName(), id)) {
       throw new TeamNameAlreadyExistsException(
           "Team with name " + teamDto.getName() + " already exists.");
     }
 
-    if (!teamDto.getProjectManagerId().equals(team.getProjectManager().getId())) {
-      throw new IllegalArgumentException("Cannot change the project manager id here.");
-    }
+    List<Long> existingTeamMemberIds = team.getTeamMembers().stream().map(User::getId).toList();
 
-    if (!teamDto.getIsActive().equals(team.getIsActive())) {
-      throw new IllegalArgumentException("Cannot change the team state here.");
-    }
-
-    if (!teamDto.getMemberIds()
-        .equals(team.getMembers().stream().map(TeamMember::getUser).map(User::getId).toList())) {
+    if (!teamDto.getTeamMemberIds().equals(existingTeamMemberIds)) {
       throw new IllegalArgumentException("Cannot change the team members here.");
     }
 
@@ -254,51 +170,43 @@ public class TeamService {
   }
 
   @Transactional
-  public TeamDto changeProjectManager(Long id, Long projectManagerId) {
-    Team team = teamRepository.findById(id)
-        .orElseThrow(() -> new TeamNotFoundException("Invalid team id: " + id));
+  public TeamDto addMemberToTeam(Long teamId, Long userId) {
+    Team team = teamRepository.findById(teamId)
+        .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
-    User newProjectManager = userRepository.findById(projectManagerId).orElseThrow(
-        () -> new UserNotFoundException("Invalid project manager id: " + projectManagerId));
-    if (!newProjectManager.getRole().equals(RoleType.PROJECTMANAGER)) {
-      throw new InvalidRoleException(
-          "The user is not a project manager: " + newProjectManager.getUsername());
+    if (!user.getRole().equals(Role.TEAMMEMBER)) {
+      throw new InvalidRoleException("User does not have the required role.");
     }
 
-    if (newProjectManager.getManagedTeams().stream()
-        .filter(Team::getIsActive).limit(6).count() == 6) {
-      throw new MaxActiveTeamsExceededException(
-          "The project manager cannot be active in more than 5 teams: "
-              + newProjectManager.getUsername());
+    if (team.getTeamMembers().contains(user)) {
+      throw new IllegalArgumentException("User is already a member of the team.");
     }
 
-    if (team.getProjectManager().getId().equals(newProjectManager.getId())) {
-      throw new IllegalArgumentException(
-          "The selected user is already the current project manager.");
-    }
-
-    team.setProjectManager(newProjectManager);
+    team.getTeamMembers().add(user);
+    user.setTeam(team);
     team = teamRepository.save(team);
 
     return convertToDto(team);
   }
 
   @Transactional
-  public TeamDto deactivateTeam(Long teamId) {
+  public TeamDto removeMemberFromTeam(Long teamId, Long userId) {
     Team team = teamRepository.findById(teamId)
-        .orElseThrow(() -> new TeamNotFoundException("Team not found"));
+        .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
-    team.setIsActive(false);
-    teamRepository.save(team);
-
-    List<TeamMember> activeMembers = teamMemberRepository.findByTeamAndIsActiveTrue(team);
-    for (TeamMember member : activeMembers) {
-      member.setIsActive(false);
-      member.setRemoveDate(LocalDate.now());
+    if (!team.getTeamMembers().contains(user)) {
+      throw new IllegalArgumentException("User is not a member of the team.");
     }
 
-    teamMemberRepository.saveAll(activeMembers);
+    team.getTeamMembers().remove(user);
+    user.setTeam(null);
+    team = teamRepository.save(team);
 
     return convertToDto(team);
   }
+
 }

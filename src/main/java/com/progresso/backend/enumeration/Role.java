@@ -1,5 +1,5 @@
 package com.progresso.backend.enumeration;
 
-public enum RoleType {
+public enum Role {
   ADMIN, PROJECTMANAGER, TEAMMEMBER
 }

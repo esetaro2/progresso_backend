@@ -3,7 +3,7 @@ package com.progresso.backend.service;
 import com.progresso.backend.dto.UserLoginDto;
 import com.progresso.backend.dto.UserRegistrationDto;
 import com.progresso.backend.dto.UserResponseDto;
-import com.progresso.backend.enumeration.RoleType;
+import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.exception.EmailAlreadyExistsException;
 import com.progresso.backend.exception.InvalidPasswordException;
 import com.progresso.backend.exception.InvalidRoleException;
@@ -40,7 +40,7 @@ public class AuthService {
     this.emailService = emailService;
   }
 
-  private String generateUsername(String firstName, String lastName, RoleType role) {
+  private String generateUsername(String firstName, String lastName, Role role) {
     int count = userRepository.countByRole(role);
     String roleInitials = switch (role.toString()) {
       case "ADMIN" -> "am";
@@ -67,11 +67,11 @@ public class AuthService {
             user.getRole()));
 
     String roleString = userRegistrationDto.getRole().toUpperCase();
-    if (!EnumUtils.isValidEnum(RoleType.class, roleString)) {
+    if (!EnumUtils.isValidEnum(Role.class, roleString)) {
       throw new InvalidRoleException("Invalid role: " + roleString);
     }
 
-    RoleType role = EnumUtils.getEnum(RoleType.class, roleString);
+    Role role = EnumUtils.getEnum(Role.class, roleString);
     user.setRole(role);
 
     String password = PasswordGenerator.generateSecurePassword();

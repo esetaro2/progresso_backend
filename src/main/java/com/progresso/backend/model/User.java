@@ -1,6 +1,6 @@
 package com.progresso.backend.model;
 
-import com.progresso.backend.enumeration.RoleType;
+import com.progresso.backend.enumeration.Role;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,9 +10,10 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -66,13 +67,16 @@ public class User {
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private RoleType role;
+  private Role role;
+
+  @OneToMany(mappedBy = "assignedUser", cascade = CascadeType.ALL, orphanRemoval = true)
+  List<Task> assignedTasks;
 
   @OneToMany(mappedBy = "projectManager", cascade = CascadeType.ALL, orphanRemoval = true,
       fetch = FetchType.EAGER)
-  private List<Team> managedTeams = new ArrayList<>();
+  private List<Project> managedProjects;
 
-  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true,
-      fetch = FetchType.EAGER)
-  private List<TeamMember> teamMemberships = new ArrayList<>();
+  @ManyToOne(fetch = FetchType.EAGER)
+  @JoinColumn(nullable = false)
+  private Team team;
 }

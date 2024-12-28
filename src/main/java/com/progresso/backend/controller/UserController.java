@@ -1,8 +1,6 @@
 package com.progresso.backend.controller;
 
-import com.progresso.backend.dto.TeamMemberDto;
 import com.progresso.backend.dto.UserResponseDto;
-import com.progresso.backend.service.TeamMemberService;
 import com.progresso.backend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -19,12 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
   private final UserService userService;
-  private final TeamMemberService teamMemberService;
 
   @Autowired
-  public UserController(UserService userService, TeamMemberService teamMemberService) {
+  public UserController(UserService userService) {
     this.userService = userService;
-    this.teamMemberService = teamMemberService;
   }
 
   @GetMapping
@@ -52,13 +48,33 @@ public class UserController {
     return ResponseEntity.ok(usersDto);
   }
 
-  @GetMapping("/{userId}/members")
-  public ResponseEntity<Page<TeamMemberDto>> getMembersByUserIdAndStatus(
-      @PathVariable("userId") Long userId,
-      @RequestParam Boolean isActive,
+  @GetMapping("/teams/{teamId}/users")
+  public ResponseEntity<Page<UserResponseDto>> getUsersByTeamId(
+      @PathVariable Long teamId,
       Pageable pageable) {
-    Page<TeamMemberDto> members = teamMemberService.findMembersByUserIdAndStatus(userId, isActive,
-        pageable);
-    return ResponseEntity.ok(members);
+
+    Page<UserResponseDto> users = userService.getUsersByTeamId(teamId, pageable);
+
+    return ResponseEntity.ok(users);
+  }
+
+  @GetMapping("/teams/{teamId}/users/{userId}")
+  public ResponseEntity<UserResponseDto> getUserByTeamAndId(
+      @PathVariable Long teamId,
+      @PathVariable Long userId) {
+
+    UserResponseDto userDto = userService.getUserByTeamAndId(teamId, userId);
+
+    return ResponseEntity.ok(userDto);
+  }
+
+  @GetMapping("/projects/{projectId}/users")
+  public ResponseEntity<Page<UserResponseDto>> getUsersByProjectId(
+      @PathVariable Long projectId,
+      Pageable pageable) {
+
+    Page<UserResponseDto> users = userService.getUsersByProjectId(projectId, pageable);
+
+    return ResponseEntity.ok(users);
   }
 }

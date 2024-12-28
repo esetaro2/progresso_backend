@@ -16,6 +16,7 @@ public class UserResponseDto {
   private String username;
   private String role;
   private String token;
-  private List<Long> managedTeamIds;
-  private List<Long> teamIds;
+  private List<Long> assignedTaskIds;
+  private List<Long> managedProjectIds;
+  private Long teamId;
 }

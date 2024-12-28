@@ -1,6 +1,6 @@
 package com.progresso.backend.dto;
 
-import com.progresso.backend.enumeration.RoleType;
+import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.model.User;
 import com.progresso.backend.validation.Age;
 import jakarta.validation.constraints.Email;
@@ -97,7 +97,7 @@ public class UserRegistrationDto {
     user.setCountry(country);
     user.setZipCode(zipCode);
     user.setEmail(email);
-    user.setRole(RoleType.valueOf(role.toUpperCase()));
+    user.setRole(Role.valueOf(role.toUpperCase()));
     return user;
   }
 }

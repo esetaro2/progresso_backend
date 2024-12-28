@@ -1,6 +1,6 @@
 package com.progresso.backend.repository;
 
-import com.progresso.backend.enumeration.RoleType;
+import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.model.User;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -16,13 +16,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
   Optional<User> findByEmail(String email);
 
   @Query("SELECT COUNT(u) FROM User u WHERE  u.role = :role")
-  int countByRole(@Param("role") RoleType role);
+  int countByRole(@Param("role") Role role);
 
-  Page<User> findByRole(RoleType role, Pageable pageable);
+  Page<User> findByRole(Role role, Pageable pageable);
 
   Page<User> findByFirstNameContainingOrLastNameContainingOrUsernameContaining(String firstName,
       String lastName, String username, Pageable pageable);
 
   @Query("SELECT u FROM User u")
   Page<User> findAllUsers(Pageable pageable);
+
+  Page<User> findByTeamId(Long teamId, Pageable pageable);
+
+  Optional<User> findByTeamIdAndId(Long teamId, Long userId);
+
+  @Query("SELECT u FROM User u JOIN u.assignedTasks t WHERE t.project.id = :projectId")
+  Page<User> findUsersByProjectId(@Param("projectId") Long projectId, Pageable pageable);
 }

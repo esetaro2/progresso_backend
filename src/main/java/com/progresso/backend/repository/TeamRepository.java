@@ -15,32 +15,22 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
   @Query("SELECT t FROM Team t")
   Page<Team> findAllTeams(Pageable pageable);
 
-  Page<Team> findByProjectManagerId(Long id, Pageable pageable);
-
-  Page<Team> findByProjectManagerIdAndIsActive(Long id, Boolean isActive, Pageable pageable);
-
-  Page<Team> findByMembersUserId(Long id, Pageable pageable);
-
-  Page<Team> findTeamsByIsActive(Boolean isActive, Pageable pageable);
-
   Boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 
   Boolean existsByNameIgnoreCase(String name);
 
-  @Query("SELECT COUNT(tm) FROM TeamMember tm WHERE tm.team.id = :teamId AND tm.isActive = true")
-  Long countActiveMembersByTeamId(@Param("teamId") Long teamId);
+  @Query("SELECT t FROM Team t JOIN t.teamMembers tm WHERE tm.id = :userId")
+  Optional<Team> findByTeamMemberId(@Param("userId") Long userId);
 
-  @Query("SELECT t FROM Team t LEFT JOIN t.members tm "
-      + "WHERE (:name IS NULL OR LOWER(t.name) LIKE %:name%) "
-      + "AND (:isActive IS NULL OR t.isActive = :isActive) "
-      + "AND (:projectManagerId IS NULL OR t.projectManager.id = :projectManagerId) "
-      + "AND (:memberUserId IS NULL OR tm.user.id = :memberUserId) "
-      + "GROUP BY t")
-  Page<Team> findTeamsByAdvancedFilters(
-      @Param("name") String name,
-      @Param("isActive") Boolean isActive,
-      @Param("projectManagerId") Long projectManagerId,
-      @Param("memberUserId") Long memberUserId,
-      Pageable pageable
-  );
+  @Query("SELECT t FROM Team t WHERE SIZE(t.projects) > 0")
+  Page<Team> findTeamsWithProjects(Pageable pageable);
+
+  @Query("SELECT t FROM Team t WHERE SIZE(t.teamMembers) > :size")
+  Page<Team> findByTeamMembersSizeGreaterThan(@Param("size") int size, Pageable pageable);
+
+  @Query("SELECT t FROM Team t WHERE SIZE(t.teamMembers) = 0")
+  Page<Team> findTeamsWithoutMembers(Pageable pageable);
+
+  @Query("SELECT t FROM Team t JOIN t.projects p WHERE p.id = :projectId")
+  Page<Team> findTeamsByProjectId(@Param("projectId") Long projectId, Pageable pageable);
 }
