@@ -55,7 +55,6 @@ public class TeamService {
     return teamDto;
   }
 
-
   public TeamDto getTeamByName(String name) {
     Team team = teamRepository.findByNameIgnoreCase(name)
         .orElseThrow(() -> new TeamNotFoundException("Invalid team name: " + name));
