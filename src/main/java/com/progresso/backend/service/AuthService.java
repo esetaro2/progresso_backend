@@ -5,18 +5,28 @@ import com.progresso.backend.dto.UserLoginDto;
 import com.progresso.backend.dto.UserRegistrationDto;
 import com.progresso.backend.dto.UserResponseDto;
 import com.progresso.backend.enumeration.Role;
+import com.progresso.backend.enumeration.Status;
+import com.progresso.backend.exception.ActiveProjectsException;
+import com.progresso.backend.exception.ActiveTasksException;
 import com.progresso.backend.exception.EmailAlreadyExistsException;
 import com.progresso.backend.exception.InvalidPasswordException;
 import com.progresso.backend.exception.InvalidRoleException;
 import com.progresso.backend.exception.UserNotActiveException;
 import com.progresso.backend.exception.UserNotFoundException;
+import com.progresso.backend.model.Project;
+import com.progresso.backend.model.Task;
 import com.progresso.backend.model.User;
 import com.progresso.backend.repository.UserRepository;
 import com.progresso.backend.security.JwtUtil;
 import com.progresso.backend.security.PasswordGenerator;
 import jakarta.transaction.Transactional;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -99,5 +109,62 @@ public class AuthService {
 
     String token = jwtUtil.generateToken(user);
     return userService.convertToDtoToken(user, token);
+  }
+
+  @Transactional
+  public UserResponseDto logout() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    String username = authentication.getName();
+
+    User user = userRepository.findByUsername(username)
+        .orElseThrow(() -> new UserNotFoundException("User not found with username: " + username));
+    user.setLastLogout(LocalDateTime.now());
+
+    User logoutUser = userRepository.save(user);
+
+    return userService.convertToDto(logoutUser);
+  }
+
+  @Transactional
+  public UserResponseDto deactivateUser(Long userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+    if (!user.getActive()) {
+      throw new UserNotActiveException("User is already deactivated");
+    }
+
+    List<Project> activeProjects = user.getManagedProjects().stream().filter(
+        project -> project.getStatus() != Status.COMPLETED
+            && project.getStatus() != Status.CANCELLED).toList();
+
+    if (!activeProjects.isEmpty()) {
+      String activeProjectsDetails = activeProjects.stream()
+          .map(project -> "ID: " + project.getId() + ", Name: " + project.getName())
+          .collect(Collectors.joining("\n"));
+      throw new ActiveProjectsException(
+          "User is managing active projects:\n" + activeProjectsDetails
+              + "\n Please reassign the project to another project manager");
+    }
+
+    List<Task> activeTasks = user.getAssignedTasks().stream()
+        .filter(task -> !task.getStatus().equals(Status.COMPLETED)).toList();
+
+    if (!activeTasks.isEmpty()) {
+      String activeTasksDetails = activeTasks.stream().map(
+              task -> "ID: " + task.getId() + ", Name: " + task.getName() + ", ProjectID: "
+                  + task.getProject().getId() + ", ProjectName: " + task.getProject().getName())
+          .collect(Collectors.joining("\n"));
+
+      throw new ActiveTasksException("User is working on active tasks:\n" + activeTasksDetails
+          + "\n Please reassign the task to another team member.");
+    }
+
+    user.setActive(false);
+    user.setDeactivatedAt(LocalDateTime.now());
+
+    User deactivatedUser = userRepository.save(user);
+
+    return userService.convertToDto(deactivatedUser);
   }
 }

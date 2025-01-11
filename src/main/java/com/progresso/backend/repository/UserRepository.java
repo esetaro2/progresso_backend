@@ -34,4 +34,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
   @Query("SELECT u FROM User u JOIN u.assignedTasks t WHERE t.project.id = :projectId")
   Page<User> findUsersByProjectId(@Param("projectId") Long projectId, Pageable pageable);
+
+  Page<User> findByActiveTrue(Pageable pageable);
 }

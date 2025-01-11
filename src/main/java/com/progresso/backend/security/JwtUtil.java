@@ -1,9 +1,13 @@
 package com.progresso.backend.security;
 
+import com.progresso.backend.exception.UserNotFoundException;
 import com.progresso.backend.model.User;
+import com.progresso.backend.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -16,9 +20,11 @@ import org.springframework.stereotype.Component;
 public class JwtUtil {
 
   private final SecretKey key;
+  private final UserRepository userRepository;
 
-  public JwtUtil(@Value("${jwt.secret}") String secret) {
+  public JwtUtil(@Value("${jwt.secret}") String secret, UserRepository userRepository) {
     this.key = Keys.hmacShaKeyFor(secret.getBytes());
+    this.userRepository = userRepository;
   }
 
   public String extractUsername(String token) {
@@ -67,6 +73,25 @@ public class JwtUtil {
 
   public Boolean validateToken(String token, String username) {
     final String extractedUsername = extractUsername(token);
-    return (extractedUsername.equals(username) && !isTokenExpired(token));
+
+    if (!extractedUsername.equals(username) || isTokenExpired(token)) {
+      return false;
+    }
+
+    User user = userRepository.findByUsername(username).orElseThrow(
+        () -> new UserNotFoundException("User not found with username: " + username));
+
+    if (!user.getActive()) {
+      return false;
+    }
+
+    Date issuedAtDate = extractClaim(token, Claims::getIssuedAt);
+    LocalDateTime issuedAt = LocalDateTime.ofInstant(issuedAtDate.toInstant(), ZoneOffset.UTC);
+
+    if (user.getDeactivatedAt() != null && user.getDeactivatedAt().isAfter(issuedAt)) {
+      return false;
+    }
+
+    return user.getLastLogout() == null || !user.getLastLogout().isAfter(issuedAt);
   }
 }

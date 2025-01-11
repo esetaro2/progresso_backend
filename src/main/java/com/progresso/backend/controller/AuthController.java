@@ -11,7 +11,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,5 +42,18 @@ public class AuthController {
       @Valid @RequestBody UserRegistrationDto registrationDto) {
     UserResponseDto userResponseDto = authService.registerUser(registrationDto);
     return ResponseEntity.status(HttpStatus.CREATED).body(userResponseDto);
+  }
+
+  @PostMapping("/logout")
+  public ResponseEntity<UserResponseDto> logout() {
+    UserResponseDto logoutUser = authService.logout();
+    return ResponseEntity.ok(logoutUser);
+  }
+
+  @PreAuthorize("hasAuthority('ADMIN')")
+  @PutMapping("/{userId}/deactivate")
+  public ResponseEntity<UserResponseDto> deactivateUser(@PathVariable Long userId) {
+    UserResponseDto userResponseDto = authService.deactivateUser(userId);
+    return ResponseEntity.ok(userResponseDto);
   }
 }

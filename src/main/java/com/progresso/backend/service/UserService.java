@@ -3,13 +3,9 @@ package com.progresso.backend.service;
 import com.progresso.backend.dto.LoginResponseDto;
 import com.progresso.backend.dto.UserResponseDto;
 import com.progresso.backend.enumeration.Role;
-import com.progresso.backend.enumeration.Status;
-import com.progresso.backend.exception.ActiveProjectsException;
-import com.progresso.backend.exception.ActiveTasksException;
 import com.progresso.backend.exception.InvalidRoleException;
 import com.progresso.backend.exception.NoDataFoundException;
 import com.progresso.backend.exception.TeamNotFoundException;
-import com.progresso.backend.exception.UserNotActiveException;
 import com.progresso.backend.exception.UserNotFoundException;
 import com.progresso.backend.model.Comment;
 import com.progresso.backend.model.Project;
@@ -19,8 +15,6 @@ import com.progresso.backend.model.User;
 import com.progresso.backend.repository.TeamRepository;
 import com.progresso.backend.repository.UserRepository;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
@@ -59,6 +53,7 @@ public class UserService {
     dto.setCommentIds(
         !CollectionUtils.isEmpty(user.getComments()) ? user.getComments().stream().map(
             Comment::getId).toList() : new ArrayList<>());
+    dto.setDeactivatedAt(user.getDeactivatedAt());
     return dto;
   }
 
@@ -71,6 +66,11 @@ public class UserService {
 
   public UserResponseDto convertToDto(User user) {
     return convertToDtoCommon(user);
+  }
+
+  public UserResponseDto getUserById(Long id) {
+    return convertToDto(userRepository.findById(id)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + id)));
   }
 
   public Page<UserResponseDto> getAllUsers(Pageable pageable) {
@@ -150,45 +150,14 @@ public class UserService {
     return convertToDto(user);
   }
 
-  public UserResponseDto deactivateUser(Long userId) {
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+  public Page<UserResponseDto> findByActiveTrue(Pageable pageable) {
+    Page<User> users = userRepository.findByActiveTrue(pageable);
 
-    if (!user.getActive()) {
-      throw new UserNotActiveException("User is already deactivated");
+    if (users.isEmpty()) {
+      throw new NoDataFoundException("No active users found");
     }
 
-    List<Project> activeProjects = user.getManagedProjects().stream().filter(
-        project -> project.getStatus() != Status.COMPLETED
-            && project.getStatus() != Status.CANCELLED).toList();
-
-    if (!activeProjects.isEmpty()) {
-      String activeProjectsDetails = activeProjects.stream()
-          .map(project -> "ID: " + project.getId() + ", Name: " + project.getName())
-          .collect(Collectors.joining("\n"));
-      throw new ActiveProjectsException(
-          "User is managing active projects:\n" + activeProjectsDetails
-              + "\n Please reassign the project to another project manager");
-    }
-
-    List<Task> activeTasks = user.getAssignedTasks().stream()
-        .filter(task -> !task.getStatus().equals(Status.COMPLETED)).toList();
-
-    if (!activeTasks.isEmpty()) {
-      String activeTasksDetails = activeTasks.stream().map(
-              task -> "ID: " + task.getId() + ", Name: " + task.getName() + ", ProjectID: "
-                  + task.getProject().getId() + ", ProjectName: " + task.getProject().getName())
-          .collect(Collectors.joining("\n"));
-
-      throw new ActiveTasksException("User is working on active tasks:\n" + activeTasksDetails
-          + "\n Please reassign the task to another team member.");
-    }
-
-    user.setActive(false);
-
-    User deactivatedUser = userRepository.save(user);
-
-    return convertToDto(deactivatedUser);
+    return users.map(this::convertToDto);
   }
 }
 

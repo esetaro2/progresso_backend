@@ -1,5 +1,6 @@
 package com.progresso.backend.dto;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -20,8 +21,6 @@ public class UserResponseDto {
 
   private String role;
 
-  private Boolean active;
-
   private List<Long> assignedTaskIds;
 
   private List<Long> managedProjectIds;
@@ -29,4 +28,8 @@ public class UserResponseDto {
   private List<Long> teamIds;
 
   private List<Long> commentIds;
+
+  private Boolean active;
+
+  private LocalDateTime deactivatedAt;
 }

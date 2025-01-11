@@ -8,7 +8,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +21,11 @@ public class UserController {
   @Autowired
   public UserController(UserService userService) {
     this.userService = userService;
+  }
+
+  @GetMapping("/{userId}")
+  public ResponseEntity<UserResponseDto> getUserById(@PathVariable Long userId) {
+    return ResponseEntity.ok(userService.getUserById(userId));
   }
 
   @GetMapping
@@ -76,9 +80,9 @@ public class UserController {
     return ResponseEntity.ok(users);
   }
 
-  @PutMapping("/{userId}/deactivate")
-  public ResponseEntity<UserResponseDto> deactivateUser(@PathVariable Long userId) {
-    UserResponseDto userResponseDto = userService.deactivateUser(userId);
-    return ResponseEntity.ok(userResponseDto);
+  @GetMapping("/active")
+  public ResponseEntity<Page<UserResponseDto>> findActiveUsers(Pageable pageable) {
+    Page<UserResponseDto> activeUsers = userService.findByActiveTrue(pageable);
+    return ResponseEntity.ok(activeUsers);
   }
 }
