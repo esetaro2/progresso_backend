@@ -32,4 +32,6 @@ public class UserResponseDto {
   private Boolean active;
 
   private LocalDateTime deactivatedAt;
+
+  private LocalDateTime lastLogout;
 }
