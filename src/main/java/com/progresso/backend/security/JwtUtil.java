@@ -6,8 +6,6 @@ import com.progresso.backend.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -58,6 +56,7 @@ public class JwtUtil {
     claims.put("lastName", user.getLastName());
     claims.put("username", user.getUsername());
     claims.put("role", user.getRole());
+    claims.put("tokenVersion", user.getTokenVersion());
     return createToken(claims, user.getUsername());
   }
 
@@ -85,13 +84,8 @@ public class JwtUtil {
       return false;
     }
 
-    Date issuedAtDate = extractClaim(token, Claims::getIssuedAt);
-    LocalDateTime issuedAt = LocalDateTime.ofInstant(issuedAtDate.toInstant(), ZoneOffset.UTC);
+    int tokenVersion = extractClaim(token, claims -> claims.get("tokenVersion", Integer.class));
 
-    if (user.getDeactivatedAt() != null && user.getDeactivatedAt().isAfter(issuedAt)) {
-      return false;
-    }
-
-    return user.getLastLogout() == null || !user.getLastLogout().isAfter(issuedAt);
+    return user.getTokenVersion() == tokenVersion;
   }
 }

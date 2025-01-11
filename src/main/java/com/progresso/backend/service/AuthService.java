@@ -20,7 +20,6 @@ import com.progresso.backend.repository.UserRepository;
 import com.progresso.backend.security.JwtUtil;
 import com.progresso.backend.security.PasswordGenerator;
 import jakarta.transaction.Transactional;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -63,6 +62,14 @@ public class AuthService {
     return String.format("%s.%s.%s%d@progresso.com",
         StringUtils.lowerCase(firstName.substring(0, 1)), StringUtils.lowerCase(lastName),
         roleInitials, count + 1);
+  }
+
+  private Integer incrementTokenVersion(Integer version) {
+    if (version == Integer.MAX_VALUE) {
+      return 0;
+    } else {
+      return version + 1;
+    }
   }
 
   @Transactional
@@ -118,10 +125,10 @@ public class AuthService {
 
     User user = userRepository.findByUsername(username)
         .orElseThrow(() -> new UserNotFoundException("User not found with username: " + username));
-    user.setLastLogout(LocalDateTime.now());
+    Integer version = incrementTokenVersion(user.getTokenVersion());
+    user.setTokenVersion(version);
 
     User logoutUser = userRepository.save(user);
-
     return userService.convertToDto(logoutUser);
   }
 
@@ -161,7 +168,6 @@ public class AuthService {
     }
 
     user.setActive(false);
-    user.setDeactivatedAt(LocalDateTime.now());
 
     User deactivatedUser = userRepository.save(user);
 
