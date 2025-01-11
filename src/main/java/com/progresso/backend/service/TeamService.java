@@ -178,16 +178,16 @@ public class TeamService {
   }
 
   @Transactional
-  public TeamDto updateTeam(Long id, TeamDto teamDto) {
+  public TeamDto updateTeam(Long id, String newName) {
     Team team = teamRepository.findById(id)
         .orElseThrow(() -> new TeamNotFoundException("Invalid team id: " + id));
 
-    if (teamRepository.existsByNameIgnoreCaseAndIdNot(teamDto.getName(), id)) {
+    if (teamRepository.existsByNameIgnoreCaseAndIdNot(newName, id)) {
       throw new TeamNameAlreadyExistsException(
-          "Team with name " + teamDto.getName() + " already exists.");
+          "Team with name " + newName + " already exists.");
     }
 
-    team.setName(teamDto.getName());
+    team.setName(newName);
     team = teamRepository.save(team);
 
     return convertToDto(team);

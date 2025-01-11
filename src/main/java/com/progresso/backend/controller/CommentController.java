@@ -3,6 +3,8 @@ package com.progresso.backend.controller;
 import com.progresso.backend.dto.CommentDto;
 import com.progresso.backend.service.CommentService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -127,7 +129,9 @@ public class CommentController {
   @PreAuthorize("@commentService.isCommentOwner(#id, authentication.name)")
   @PutMapping("/{id}")
   public ResponseEntity<CommentDto> updateComment(@PathVariable Long id,
-      @RequestParam String newContent) {
+      @RequestParam @NotEmpty(message = "Content cannot be empty")
+      @Size(max = 500,
+          message = "Content must be between 1 and 500 characters") String newContent) {
     CommentDto updatedComment = commentService.updateComment(id, newContent);
     return ResponseEntity.ok(updatedComment);
   }

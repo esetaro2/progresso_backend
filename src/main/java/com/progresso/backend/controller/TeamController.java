@@ -3,6 +3,8 @@ package com.progresso.backend.controller;
 import com.progresso.backend.dto.TeamDto;
 import com.progresso.backend.service.TeamService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -101,8 +103,10 @@ public class TeamController {
       + "and @teamService.isProjectManagerOfTeamProjects(#teamId, authentication.name)")
   @PutMapping("/{teamId}")
   public ResponseEntity<TeamDto> updateTeam(
-      @PathVariable Long teamId, @Valid @RequestBody TeamDto teamDto) {
-    TeamDto updatedTeamDto = teamService.updateTeam(teamId, teamDto);
+      @PathVariable Long teamId,
+      @RequestParam @NotEmpty(message = "Name cannot be empty.")
+      @Size(max = 100, message = "Name cannot exceed 100 characters.") String newName) {
+    TeamDto updatedTeamDto = teamService.updateTeam(teamId, newName);
     return ResponseEntity.ok(updatedTeamDto);
   }
 

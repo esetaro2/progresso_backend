@@ -436,6 +436,11 @@ public class ProjectService {
       throw new IllegalArgumentException("Cannot change team here.");
     }
 
+    if (!projectDto.getCommentIds()
+        .equals(project.getComments().stream().map(Comment::getId).toList())) {
+      throw new IllegalArgumentException("Cannot change comments here.");
+    }
+
     project.setName(projectDto.getName());
     project.setDescription(projectDto.getDescription());
     project.setPriority(Priority.valueOf(projectDto.getPriority()));
