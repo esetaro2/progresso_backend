@@ -34,7 +34,6 @@ public class TaskDto {
 
   private LocalDate completionDate;
 
-  @NotNull(message = "Status cannot be null")
   private String status;
 
   @NotNull(message = "Project ID cannot be null")

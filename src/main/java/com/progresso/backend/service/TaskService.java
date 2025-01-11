@@ -7,6 +7,7 @@ import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.exception.InvalidRoleException;
 import com.progresso.backend.exception.NoDataFoundException;
 import com.progresso.backend.exception.ProjectNotFoundException;
+import com.progresso.backend.exception.TaskNameAlreadyExistsException;
 import com.progresso.backend.exception.TaskNotFoundException;
 import com.progresso.backend.exception.UserNotFoundException;
 import com.progresso.backend.model.Project;
@@ -54,9 +55,22 @@ public class TaskService {
     return taskDto;
   }
 
+  public Long getProjectIdByTaskId(Long taskId) {
+    return taskRepository.findById(taskId)
+        .map(task -> task.getProject().getId())
+        .orElseThrow(() -> new TaskNotFoundException("Task not found"));
+  }
+
   private void checkIfUserExists(Long userId) {
     userRepository.findById(userId).orElseThrow(() ->
         new UserNotFoundException("User not found with ID: " + userId));
+  }
+
+  public TaskDto findById(Long taskId) {
+    Task task = taskRepository.findById(taskId)
+        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
+
+    return convertToDto(task);
   }
 
   public Page<TaskDto> findByStatus(Status status, Pageable pageable) {
@@ -247,6 +261,10 @@ public class TaskService {
 
   @Transactional
   public TaskDto createTask(TaskDto taskDto) {
+    if (taskDto.getStartDate().isBefore(LocalDate.now()) || taskDto.getDueDate()
+        .isBefore(LocalDate.now())) {
+      throw new IllegalArgumentException("Start date and due date must be after the current date");
+    }
     if (taskDto.getStartDate().isAfter(taskDto.getDueDate())) {
       throw new IllegalArgumentException("Start date cannot be after due date");
     }
@@ -264,12 +282,94 @@ public class TaskService {
     task.setStatus(Status.NOT_STARTED);
     task.setProject(project);
 
+    if (project.getTasks().stream().map(Task::getName).toList().contains(taskDto.getName())) {
+      throw new TaskNameAlreadyExistsException(
+          "Task with name " + taskDto.getName() + " already exists in this project");
+    }
+
     Task savedTask = taskRepository.save(task);
     return convertToDto(savedTask);
   }
 
   @Transactional
+  public TaskDto assignTaskToTeamMember(Long taskId, Long userId) {
+    Task task = taskRepository.findById(taskId)
+        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+    if (!user.getRole().equals(Role.TEAMMEMBER)) {
+      throw new InvalidRoleException("This user is not a team member: " + user.getUsername());
+    }
+
+    if (task.getAssignedUser() != null) {
+      throw new IllegalStateException(
+          "Task is already assigned to user: " + task.getAssignedUser().getUsername());
+    }
+
+    if (!task.getProject().getStatus().equals(Status.IN_PROGRESS)) {
+      task.getProject().setStatus(Status.IN_PROGRESS);
+      projectRepository.save(task.getProject());
+    }
+
+    task.setAssignedUser(user);
+    task.setStatus(Status.IN_PROGRESS);
+
+    taskRepository.save(task);
+
+    user.getAssignedTasks().add(task);
+    userRepository.save(user);
+
+    return convertToDto(task);
+  }
+
+  @Transactional
+  public TaskDto reassignTaskToTeamMember(Long taskId, Long userId) {
+    Task task = taskRepository.findById(taskId)
+        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+    User currUser = task.getAssignedUser();
+
+    if (!task.getProject().getTeam().getTeamMembers().contains(user)) {
+      throw new UserNotFoundException(
+          "User " + user.getUsername() + " not found this team");
+    }
+
+    if (currUser == null) {
+      throw new UserNotFoundException("Task is not assigned to any user");
+    }
+
+    if (currUser.equals(user)) {
+      throw new IllegalArgumentException("Task is already assigned to user: " + user.getUsername());
+    }
+
+    if (!user.getRole().equals(Role.TEAMMEMBER)) {
+      throw new InvalidRoleException("This user is not a team member: " + user.getUsername());
+    }
+
+    task.setAssignedUser(user);
+    taskRepository.save(task);
+
+    currUser.getAssignedTasks().remove(task);
+    user.getAssignedTasks().add(task);
+
+    userRepository.save(currUser);
+    userRepository.save(user);
+
+    return convertToDto(task);
+  }
+
+  @Transactional
   public TaskDto updateTask(Long taskId, TaskDto taskDto) {
+    if (taskDto.getStartDate().isBefore(LocalDate.now()) || taskDto.getDueDate()
+        .isBefore(LocalDate.now())) {
+      throw new IllegalArgumentException("Start date and due date must be after the current date");
+    }
+    if (taskDto.getStartDate().isAfter(taskDto.getDueDate())) {
+      throw new IllegalArgumentException("Start date cannot be after due date");
+    }
+
     Task task = taskRepository.findById(taskId)
         .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
 
@@ -293,8 +393,12 @@ public class TaskService {
       throw new IllegalStateException("Task is already completed");
     }
 
+    if (LocalDate.now().isBefore(task.getStartDate())) {
+      throw new IllegalArgumentException("Cannot complete the task before the start date");
+    }
+
     task.setStatus(Status.COMPLETED);
-    task.setPriority(Priority.COMPLETED);
+    task.setPriority(Priority.LOW);
     task.setCompletionDate(LocalDate.now());
 
     Task completedTask = taskRepository.save(task);
@@ -302,27 +406,7 @@ public class TaskService {
   }
 
   @Transactional
-  public TaskDto addTaskToProject(Long projectId, Long taskId) {
-    Project project = projectRepository.findById(projectId)
-        .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
-    Task task = taskRepository.findById(taskId)
-        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
-
-    if (project.getTasks().contains(task)) {
-      throw new IllegalArgumentException("Task already exists: " + task);
-    }
-
-    task.setProject(project);
-    project.getTasks().add(task);
-
-    taskRepository.save(task);
-    projectRepository.save(project);
-
-    return convertToDto(task);
-  }
-
-  @Transactional
-  public TaskDto removeTaskFromProject(Long projectId, Long taskId) {
+  public void removeTaskFromProject(Long projectId, Long taskId) {
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
     Task task = project.getTasks().stream().filter(t -> t.getId().equals(taskId)).findFirst()
@@ -332,68 +416,12 @@ public class TaskService {
 
     if (user != null) {
       user.getAssignedTasks().remove(task);
+      userRepository.save(user);
     }
 
-    task.setProject(null);
-    taskRepository.save(task);
+    taskRepository.delete(task);
 
     project.getTasks().remove(task);
     projectRepository.save(project);
-
-    return convertToDto(task);
-  }
-
-  @Transactional
-  public TaskDto assignTaskToTeamMember(Long taskId, Long userId) {
-    Task task = taskRepository.findById(taskId)
-        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
-
-    if (!user.getRole().equals(Role.TEAMMEMBER)) {
-      throw new InvalidRoleException("This user is not a team member: " + user.getUsername());
-    }
-
-    if (task.getAssignedUser() != null) {
-      throw new IllegalStateException(
-          "Task is already assigned to user: " + task.getAssignedUser().getUsername());
-    }
-
-    task.setAssignedUser(user);
-    task.setStatus(Status.IN_PROGRESS);
-    taskRepository.save(task);
-
-    user.getAssignedTasks().add(task);
-
-    return convertToDto(task);
-  }
-
-  @Transactional
-  public TaskDto reassignTaskToTeamMember(Long taskId, Long userId) {
-    Task task = taskRepository.findById(taskId)
-        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
-    User currUser = task.getAssignedUser();
-
-    if (currUser == null) {
-      throw new UserNotFoundException("Task is not assigned to any user");
-    }
-
-    if (currUser.equals(user)) {
-      throw new IllegalArgumentException("Task is already assigned to user: " + user.getUsername());
-    }
-
-    if (!user.getRole().equals(Role.TEAMMEMBER)) {
-      throw new InvalidRoleException("This user is not a team member: " + user.getUsername());
-    }
-
-    task.setAssignedUser(user);
-    taskRepository.save(task);
-
-    currUser.getAssignedTasks().remove(task);
-    user.getAssignedTasks().add(task);
-
-    return convertToDto(task);
   }
 }

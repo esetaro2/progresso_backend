@@ -3,12 +3,14 @@ package com.progresso.backend.controller;
 import com.progresso.backend.dto.TaskDto;
 import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.service.TaskService;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -28,6 +30,12 @@ public class TaskController {
   @Autowired
   public TaskController(TaskService taskService) {
     this.taskService = taskService;
+  }
+
+  @GetMapping("/{taskId}")
+  public ResponseEntity<TaskDto> getTaskById(@PathVariable Long taskId) {
+    TaskDto taskDto = taskService.findById(taskId);
+    return ResponseEntity.ok(taskDto);
   }
 
   @GetMapping("/status/{status}")
@@ -152,25 +160,17 @@ public class TaskController {
     return ResponseEntity.ok(tasks);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#taskDto.projectId, authentication.name))")
   @PostMapping
-  public ResponseEntity<TaskDto> createTask(@RequestBody TaskDto taskDto) {
+  public ResponseEntity<TaskDto> createTask(@Valid @RequestBody TaskDto taskDto) {
     TaskDto createdTask = taskService.createTask(taskDto);
     return ResponseEntity.status(HttpStatus.CREATED).body(createdTask);
   }
 
-  @PutMapping("/{taskId}")
-  public ResponseEntity<TaskDto> updateTask(@PathVariable Long taskId,
-      @RequestBody TaskDto taskDto) {
-    TaskDto updatedTask = taskService.updateTask(taskId, taskDto);
-    return ResponseEntity.ok(updatedTask);
-  }
-
-  @PatchMapping("/{taskId}/complete")
-  public ResponseEntity<TaskDto> completeTask(@PathVariable Long taskId) {
-    TaskDto completedTask = taskService.completeTask(taskId);
-    return ResponseEntity.ok(completedTask);
-  }
-
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(@taskService.getProjectIdByTaskId(#taskId), "
+      + "authentication.name))")
   @PostMapping("/{taskId}/assign/{userId}")
   public ResponseEntity<TaskDto> assignTaskToUser(@PathVariable Long taskId,
       @PathVariable Long userId) {
@@ -178,6 +178,9 @@ public class TaskController {
     return ResponseEntity.ok(assignedTask);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(@taskService.getProjectIdByTaskId(#taskId), "
+      + "authentication.name))")
   @PostMapping("/{taskId}/reassign/{userId}")
   public ResponseEntity<TaskDto> reassignTaskToUser(@PathVariable Long taskId,
       @PathVariable Long userId) {
@@ -185,17 +188,30 @@ public class TaskController {
     return ResponseEntity.ok(reassignedTask);
   }
 
-  @PostMapping("/project/{projectId}/task/{taskId}")
-  public ResponseEntity<TaskDto> addTaskToProject(@PathVariable Long projectId,
-      @PathVariable Long taskId) {
-    TaskDto taskDto = taskService.addTaskToProject(projectId, taskId);
-    return ResponseEntity.ok(taskDto);
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#taskDto.projectId, authentication.name))")
+  @PutMapping("/{taskId}")
+  public ResponseEntity<TaskDto> updateTask(@PathVariable Long taskId,
+      @Valid @RequestBody TaskDto taskDto) {
+    TaskDto updatedTask = taskService.updateTask(taskId, taskDto);
+    return ResponseEntity.ok(updatedTask);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(@taskService.getProjectIdByTaskId(#taskId), "
+      + "authentication.name))")
+  @PatchMapping("/{taskId}/complete")
+  public ResponseEntity<TaskDto> completeTask(@PathVariable Long taskId) {
+    TaskDto completedTask = taskService.completeTask(taskId);
+    return ResponseEntity.ok(completedTask);
+  }
+
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#projectId, authentication.name))")
   @DeleteMapping("/project/{projectId}/task/{taskId}")
-  public ResponseEntity<TaskDto> removeTaskFromProject(@PathVariable Long projectId,
+  public ResponseEntity<Void> removeTaskFromProject(@PathVariable Long projectId,
       @PathVariable Long taskId) {
-    TaskDto taskDto = taskService.removeTaskFromProject(projectId, taskId);
-    return ResponseEntity.ok(taskDto);
+    taskService.removeTaskFromProject(projectId, taskId);
+    return ResponseEntity.noContent().build();
   }
 }
