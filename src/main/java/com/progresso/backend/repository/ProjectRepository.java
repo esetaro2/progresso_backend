@@ -16,6 +16,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
+  @Query("SELECT p FROM Project p")
+  Page<Project> findAllProjects(Pageable pageable);
+
   Page<Project> findByStatus(Status status, Pageable pageable);
 
   Page<Project> findByProjectManagerId(Long projectManagerId, Pageable pageable);
@@ -40,7 +43,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
   Page<Project> findByTeamIdAndDueDateBefore(Long teamId, LocalDate dueDate, Pageable pageable);
 
   @Query("SELECT p FROM Project p WHERE p.team.id = :teamId AND p.status != 'COMPLETED' "
-      + "AND p.status != 'INACTIVE'")
+      + "AND p.status != 'CANCELLED'")
   Page<Project> findActiveByTeamId(Long teamId, Pageable pageable);
 
   Page<Project> findByStatusAndPriority(Status status, Priority priority, Pageable pageable);
@@ -52,4 +55,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
   long countByProjectManagerAndStatusNotIn(User projectManager, List<Status> excludedStatus);
 
   long countByTeamAndStatusNotIn(Team team, List<Status> excludedStatus);
+
+  boolean existsByName(String name);
 }

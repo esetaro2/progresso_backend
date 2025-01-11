@@ -24,7 +24,6 @@ public class ProjectDto {
   @Size(max = 255, message = "Project description must be between 1 and 255 characters")
   private String description;
 
-  @NotNull(message = "Priority cannot be null")
   private String priority;
 
   @NotNull(message = "Start date cannot be null")
@@ -35,7 +34,6 @@ public class ProjectDto {
 
   private LocalDate completionDate;
 
-  @NotNull(message = "Status cannot be null")
   private String status;
 
   @NotNull(message = "Project manager ID cannot be null")
@@ -44,4 +42,6 @@ public class ProjectDto {
   private List<Long> taskIds;
 
   private Long teamId;
+
+  private List<Long> commentIds;
 }

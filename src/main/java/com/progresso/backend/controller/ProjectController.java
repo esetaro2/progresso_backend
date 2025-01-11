@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +29,12 @@ public class ProjectController {
   @Autowired
   public ProjectController(ProjectService projectService) {
     this.projectService = projectService;
+  }
+
+  @GetMapping
+  public ResponseEntity<Page<ProjectDto>> getAllProjects(Pageable pageable) {
+    Page<ProjectDto> page = projectService.findAllProjects(pageable);
+    return ResponseEntity.ok(page);
   }
 
   @GetMapping("/{id}")
@@ -155,12 +162,15 @@ public class ProjectController {
     return ResponseEntity.ok(projects);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
   @PostMapping
   public ResponseEntity<ProjectDto> createProject(@Valid @RequestBody ProjectDto projectDto) {
     ProjectDto createdProject = projectService.createProject(projectDto);
     return ResponseEntity.ok(createdProject);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#projectId, authentication.name))")
   @PutMapping("/{projectId}")
   public ResponseEntity<ProjectDto> updateProject(
       @PathVariable Long projectId,
@@ -171,6 +181,7 @@ public class ProjectController {
     return ResponseEntity.ok(updatedProject);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN')")
   @PutMapping("/{projectId}/remove")
   public ResponseEntity<ProjectDto> removeProject(@PathVariable Long projectId) {
 
@@ -179,6 +190,7 @@ public class ProjectController {
     return ResponseEntity.ok(removedProject);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN')")
   @PutMapping("/{projectId}/update-manager/{projectManagerId}")
   public ResponseEntity<ProjectDto> updateProjectManager(
       @PathVariable Long projectId,
@@ -189,6 +201,8 @@ public class ProjectController {
     return ResponseEntity.ok(updatedProject);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#projectId, authentication.name))")
   @PutMapping("/{projectId}/assign-team/{teamId}")
   public ResponseEntity<ProjectDto> assignTeamToProject(
       @PathVariable Long projectId,
@@ -199,6 +213,8 @@ public class ProjectController {
     return ResponseEntity.ok(updatedProject);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#projectId, authentication.name))")
   @PutMapping("/{projectId}/reassign-team/{teamId}")
   public ResponseEntity<ProjectDto> reassignTeamToProject(
       @PathVariable Long projectId,
@@ -209,6 +225,8 @@ public class ProjectController {
     return ResponseEntity.ok(updatedProject);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#projectId, authentication.name))")
   @PutMapping("/{projectId}/complete")
   public ResponseEntity<ProjectDto> completeProject(@PathVariable Long projectId) {
     ProjectDto updatedProject = projectService.completeProject(projectId);
