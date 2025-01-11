@@ -53,8 +53,6 @@ public class UserService {
     dto.setCommentIds(
         !CollectionUtils.isEmpty(user.getComments()) ? user.getComments().stream().map(
             Comment::getId).toList() : new ArrayList<>());
-    dto.setDeactivatedAt(user.getDeactivatedAt());
-    dto.setLastLogout(user.getLastLogout());
     return dto;
   }
 

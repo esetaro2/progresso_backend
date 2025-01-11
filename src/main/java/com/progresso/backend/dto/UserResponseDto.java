@@ -1,6 +1,5 @@
 package com.progresso.backend.dto;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,8 +29,4 @@ public class UserResponseDto {
   private List<Long> commentIds;
 
   private Boolean active;
-
-  private LocalDateTime deactivatedAt;
-
-  private LocalDateTime lastLogout;
 }

@@ -13,7 +13,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -85,7 +84,6 @@ public class User {
   @Column(nullable = false)
   private Boolean active;
 
-  private LocalDateTime deactivatedAt;
-
-  private LocalDateTime lastLogout;
+  @Column(nullable = false)
+  private Integer tokenVersion = 0;
 }
