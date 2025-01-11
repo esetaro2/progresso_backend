@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,14 +59,11 @@ public class UserController {
     return ResponseEntity.ok(users);
   }
 
-  @GetMapping("/teams/{teamId}/users/{userId}")
-  public ResponseEntity<UserResponseDto> getUserByTeamAndId(
-      @PathVariable Long teamId,
+  @GetMapping("/teams/{teamId}/user/{userId}")
+  public ResponseEntity<UserResponseDto> getUserFromTeam(@PathVariable Long teamId,
       @PathVariable Long userId) {
-
-    UserResponseDto userDto = userService.getUserByTeamAndId(teamId, userId);
-
-    return ResponseEntity.ok(userDto);
+    UserResponseDto userResponseDto = userService.getUserFromTeam(teamId, userId);
+    return ResponseEntity.ok(userResponseDto);
   }
 
   @GetMapping("/projects/{projectId}/users")
@@ -76,5 +74,11 @@ public class UserController {
     Page<UserResponseDto> users = userService.getUsersByProjectId(projectId, pageable);
 
     return ResponseEntity.ok(users);
+  }
+
+  @PutMapping("/{userId}/deactivate")
+  public ResponseEntity<UserResponseDto> deactivateUser(@PathVariable Long userId) {
+    UserResponseDto userResponseDto = userService.deactivateUser(userId);
+    return ResponseEntity.ok(userResponseDto);
   }
 }

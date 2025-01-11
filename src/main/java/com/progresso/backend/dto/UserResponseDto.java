@@ -11,12 +11,22 @@ import lombok.NoArgsConstructor;
 public class UserResponseDto {
 
   private Long id;
+
   private String firstName;
+
   private String lastName;
+
   private String username;
+
   private String role;
-  private String token;
+
+  private Boolean active;
+
   private List<Long> assignedTaskIds;
+
   private List<Long> managedProjectIds;
-  private Long teamId;
+
+  private List<Long> teamIds;
+
+  private List<Long> commentIds;
 }

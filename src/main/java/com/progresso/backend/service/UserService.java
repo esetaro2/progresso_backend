@@ -1,17 +1,26 @@
 package com.progresso.backend.service;
 
+import com.progresso.backend.dto.LoginResponseDto;
 import com.progresso.backend.dto.UserResponseDto;
 import com.progresso.backend.enumeration.Role;
+import com.progresso.backend.enumeration.Status;
+import com.progresso.backend.exception.ActiveProjectsException;
+import com.progresso.backend.exception.ActiveTasksException;
 import com.progresso.backend.exception.InvalidRoleException;
 import com.progresso.backend.exception.NoDataFoundException;
 import com.progresso.backend.exception.TeamNotFoundException;
+import com.progresso.backend.exception.UserNotActiveException;
 import com.progresso.backend.exception.UserNotFoundException;
+import com.progresso.backend.model.Comment;
 import com.progresso.backend.model.Project;
 import com.progresso.backend.model.Task;
+import com.progresso.backend.model.Team;
 import com.progresso.backend.model.User;
 import com.progresso.backend.repository.TeamRepository;
 import com.progresso.backend.repository.UserRepository;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
@@ -37,20 +46,27 @@ public class UserService {
     dto.setLastName(user.getLastName());
     dto.setUsername(user.getUsername());
     dto.setRole(user.getRole().toString());
+    dto.setActive(user.getActive());
     dto.setManagedProjectIds(
         !CollectionUtils.isEmpty(user.getManagedProjects()) ? user.getManagedProjects().stream()
             .map(Project::getId).toList() : new ArrayList<>());
     dto.setAssignedTaskIds(
         !CollectionUtils.isEmpty(user.getAssignedTasks()) ? user.getAssignedTasks().stream()
             .map(Task::getId).toList() : new ArrayList<>());
-    dto.setTeamId(user.getTeam().getId());
+    dto.setTeamIds(
+        !CollectionUtils.isEmpty(user.getTeams()) ? user.getTeams().stream().map(Team::getId)
+            .toList() : new ArrayList<>());
+    dto.setCommentIds(
+        !CollectionUtils.isEmpty(user.getComments()) ? user.getComments().stream().map(
+            Comment::getId).toList() : new ArrayList<>());
     return dto;
   }
 
-  public UserResponseDto convertToDtoToken(User user, String token) {
-    UserResponseDto dto = convertToDtoCommon(user);
-    dto.setToken(token);
-    return dto;
+  public LoginResponseDto convertToDtoToken(User user, String token) {
+    LoginResponseDto loginResponseDto = new LoginResponseDto();
+    loginResponseDto.setToken(token);
+    loginResponseDto.setUserResponseDto(convertToDtoCommon(user));
+    return loginResponseDto;
   }
 
   public UserResponseDto convertToDto(User user) {
@@ -106,33 +122,13 @@ public class UserService {
     teamRepository.findById(teamId)
         .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
 
-    Page<User> users = userRepository.findByTeamId(teamId, pageable);
+    Page<User> users = userRepository.findUsersByTeamId(teamId, pageable);
 
     if (users.isEmpty()) {
       throw new NoDataFoundException("No users found for team ID: " + teamId);
     }
 
     return users.map(this::convertToDto);
-  }
-
-  public UserResponseDto getUserByTeamAndId(Long teamId, Long userId) {
-    teamRepository.findById(teamId)
-        .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
-
-    User user = userRepository.findByTeamIdAndId(teamId, userId)
-        .orElseThrow(() -> new UserNotFoundException(
-            "User with ID " + userId + " not found in team " + teamId));
-
-    if (!user.getRole().equals(Role.TEAMMEMBER)) {
-      throw new InvalidRoleException("User is not a team member: " + user.getUsername());
-    }
-
-    if (!user.getTeam().getId().equals(teamId)) {
-      throw new UserNotFoundException(
-          "User with ID " + userId + " does not belong to team " + teamId);
-    }
-
-    return convertToDto(user);
   }
 
   public Page<UserResponseDto> getUsersByProjectId(Long projectId, Pageable pageable) {
@@ -143,6 +139,56 @@ public class UserService {
     }
 
     return users.map(this::convertToDto);
+  }
+
+  public UserResponseDto getUserFromTeam(Long teamId, Long userId) {
+    teamRepository.findById(teamId)
+        .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
+    User user = userRepository.findUserInTeam(teamId, userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+    return convertToDto(user);
+  }
+
+  public UserResponseDto deactivateUser(Long userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+    if (!user.getActive()) {
+      throw new UserNotActiveException("User is already deactivated");
+    }
+
+    List<Project> activeProjects = user.getManagedProjects().stream().filter(
+        project -> project.getStatus() != Status.COMPLETED
+            && project.getStatus() != Status.CANCELLED).toList();
+
+    if (!activeProjects.isEmpty()) {
+      String activeProjectsDetails = activeProjects.stream()
+          .map(project -> "ID: " + project.getId() + ", Name: " + project.getName())
+          .collect(Collectors.joining("\n"));
+      throw new ActiveProjectsException(
+          "User is managing active projects:\n" + activeProjectsDetails
+              + "\n Please reassign the project to another project manager");
+    }
+
+    List<Task> activeTasks = user.getAssignedTasks().stream()
+        .filter(task -> !task.getStatus().equals(Status.COMPLETED)).toList();
+
+    if (!activeTasks.isEmpty()) {
+      String activeTasksDetails = activeTasks.stream().map(
+              task -> "ID: " + task.getId() + ", Name: " + task.getName() + ", ProjectID: "
+                  + task.getProject().getId() + ", ProjectName: " + task.getProject().getName())
+          .collect(Collectors.joining("\n"));
+
+      throw new ActiveTasksException("User is working on active tasks:\n" + activeTasksDetails
+          + "\n Please reassign the task to another team member.");
+    }
+
+    user.setActive(false);
+
+    User deactivatedUser = userRepository.save(user);
+
+    return convertToDto(deactivatedUser);
   }
 }
 

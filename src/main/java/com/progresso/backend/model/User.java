@@ -10,8 +10,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import java.time.LocalDate;
 import java.util.List;
@@ -69,14 +68,19 @@ public class User {
   @Column(nullable = false)
   private Role role;
 
-  @OneToMany(mappedBy = "assignedUser", cascade = CascadeType.ALL, orphanRemoval = true)
+  @Column(nullable = false)
+  private Boolean active;
+
+  @ManyToMany(fetch = FetchType.EAGER)
+  private List<Team> teams;
+
+  @OneToMany(mappedBy = "assignedUser", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   List<Task> assignedTasks;
 
-  @OneToMany(mappedBy = "projectManager", cascade = CascadeType.ALL, orphanRemoval = true,
-      fetch = FetchType.EAGER)
+  @OneToMany(mappedBy = "projectManager", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   private List<Project> managedProjects;
 
-  @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(nullable = false)
-  private Team team;
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true,
+      fetch = FetchType.EAGER)
+  private List<Comment> comments;
 }

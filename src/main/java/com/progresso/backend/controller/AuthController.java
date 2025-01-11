@@ -1,5 +1,6 @@
 package com.progresso.backend.controller;
 
+import com.progresso.backend.dto.LoginResponseDto;
 import com.progresso.backend.dto.UserLoginDto;
 import com.progresso.backend.dto.UserRegistrationDto;
 import com.progresso.backend.dto.UserResponseDto;
@@ -28,8 +29,8 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public ResponseEntity<UserResponseDto> login(@Valid @RequestBody UserLoginDto loginDto) {
-    UserResponseDto userDto = authService.authenticateUser(loginDto);
+  public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody UserLoginDto loginDto) {
+    LoginResponseDto userDto = authService.authenticateUser(loginDto);
     return ResponseEntity.ok(userDto);
   }
 
