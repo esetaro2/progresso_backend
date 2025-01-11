@@ -7,6 +7,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -26,11 +27,12 @@ public class Team {
   @Column(nullable = false, unique = true)
   private String name;
 
-  @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true,
-      fetch = FetchType.EAGER)
+  @Column(nullable = false)
+  private Boolean active;
+
+  @ManyToMany(mappedBy = "teams", fetch = FetchType.EAGER)
   private List<User> teamMembers;
 
-  @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true,
-      fetch = FetchType.EAGER)
+  @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   private List<Project> projects;
 }

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -49,10 +50,18 @@ public class TeamController {
     return ResponseEntity.ok(teamDto);
   }
 
+  @GetMapping("/active")
+  public ResponseEntity<Page<TeamDto>> getTeamsByActive(
+      @RequestParam Boolean active, Pageable pageable) {
+    Page<TeamDto> teamsDto = teamService.getTeamsByActive(active, pageable);
+    return ResponseEntity.ok(teamsDto);
+  }
+
   @GetMapping("/user/{userId}")
-  public ResponseEntity<TeamDto> getTeamByMemberId(@PathVariable Long userId) {
-    TeamDto teamDto = teamService.getTeamByMemberId(userId);
-    return ResponseEntity.ok(teamDto);
+  public ResponseEntity<Page<TeamDto>> getTeamsByMemberId(@PathVariable Long userId,
+      Pageable pageable) {
+    Page<TeamDto> teamsDto = teamService.getTeamsByMemberId(userId, pageable);
+    return ResponseEntity.ok(teamsDto);
   }
 
   @GetMapping("/with-projects")
@@ -88,7 +97,8 @@ public class TeamController {
     return ResponseEntity.status(HttpStatus.CREATED).body(newTeamDto);
   }
 
-  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
+  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER') "
+      + "and @teamService.isProjectManagerOfTeamProjects(#teamId, authentication.name)")
   @PutMapping("/{teamId}")
   public ResponseEntity<TeamDto> updateTeam(
       @PathVariable Long teamId, @Valid @RequestBody TeamDto teamDto) {
@@ -96,6 +106,8 @@ public class TeamController {
     return ResponseEntity.ok(updatedTeamDto);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER') "
+      + "and @teamService.isProjectManagerOfTeamProjects(#teamId, authentication.name)")
   @PostMapping("/{teamId}/add-member/{userId}")
   public ResponseEntity<TeamDto> addMemberToTeam(@PathVariable Long teamId,
       @PathVariable Long userId) {
@@ -103,11 +115,19 @@ public class TeamController {
     return ResponseEntity.ok(teamDto);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER') "
+      + "and @teamService.isProjectManagerOfTeamProjects(#teamId, authentication.name)")
   @DeleteMapping("/{teamId}/remove-member/{userId}")
   public ResponseEntity<TeamDto> removeMemberFromTeam(@PathVariable Long teamId,
       @PathVariable Long userId) {
     TeamDto teamDto = teamService.removeMemberFromTeam(teamId, userId);
-    return ResponseEntity.ok(teamDto); // Risultato 200 OK
+    return ResponseEntity.ok(teamDto);
+  }
+
+  @PreAuthorize("hasAuthority('ADMIN')")
+  @DeleteMapping("/{teamId}")
+  public ResponseEntity<TeamDto> deleteTeam(@PathVariable Long teamId) {
+    TeamDto teamDto = teamService.deleteTeam(teamId);
+    return ResponseEntity.ok(teamDto);
   }
 }
-

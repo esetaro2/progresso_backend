@@ -20,7 +20,7 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
   Boolean existsByNameIgnoreCase(String name);
 
   @Query("SELECT t FROM Team t JOIN t.teamMembers tm WHERE tm.id = :userId")
-  Optional<Team> findByTeamMemberId(@Param("userId") Long userId);
+  Page<Team> findByTeamMemberId(@Param("userId") Long userId, Pageable pageable);
 
   @Query("SELECT t FROM Team t WHERE SIZE(t.projects) > 0")
   Page<Team> findTeamsWithProjects(Pageable pageable);
@@ -33,4 +33,6 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
 
   @Query("SELECT t FROM Team t JOIN t.projects p WHERE p.id = :projectId")
   Page<Team> findTeamsByProjectId(@Param("projectId") Long projectId, Pageable pageable);
+
+  Page<Team> findTeamsByActive(Boolean active, Pageable pageable);
 }

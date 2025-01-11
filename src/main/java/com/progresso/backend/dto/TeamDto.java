@@ -14,6 +14,8 @@ public class TeamDto {
   @Size(max = 100, message = "Name cannot exceed 100 characters.")
   private String name;
 
+  private Boolean active;
+
   private List<Long> teamMemberIds;
 
   private List<Long> projectIds;
