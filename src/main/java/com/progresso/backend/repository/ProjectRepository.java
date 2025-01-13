@@ -30,7 +30,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
   Page<Project> findByCompletionDateAfter(LocalDate completionDate, Pageable pageable);
 
   @Query("SELECT p FROM Project p WHERE p.projectManager.id = :managerId "
-      + "AND p.status != 'COMPLETED' AND p.status != 'INACTIVE'")
+      + "AND p.projectManager.active = true "
+      + "AND p.status != 'COMPLETED' AND p.status != 'CANCELLED'")
   Page<Project> findActiveByProjectManager(Long managerId, Pageable pageable);
 
   @Query("SELECT DISTINCT p FROM Project p JOIN p.tasks t WHERE t.status = :taskStatus")
@@ -42,8 +43,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
   Page<Project> findByTeamIdAndDueDateBefore(Long teamId, LocalDate dueDate, Pageable pageable);
 
-  @Query("SELECT p FROM Project p WHERE p.team.id = :teamId AND p.status != 'COMPLETED' "
-      + "AND p.status != 'CANCELLED'")
+  @Query("SELECT p FROM Project p WHERE p.team.id = :teamId AND p.team.active = true "
+      + "AND p.status != 'COMPLETED' AND p.status != 'CANCELLED'")
   Page<Project> findActiveByTeamId(Long teamId, Pageable pageable);
 
   Page<Project> findByStatusAndPriority(Status status, Priority priority, Pageable pageable);

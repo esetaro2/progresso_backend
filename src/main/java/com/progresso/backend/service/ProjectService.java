@@ -8,6 +8,7 @@ import com.progresso.backend.exception.InvalidRoleException;
 import com.progresso.backend.exception.NoDataFoundException;
 import com.progresso.backend.exception.ProjectNotFoundException;
 import com.progresso.backend.exception.TeamNotFoundException;
+import com.progresso.backend.exception.UserNotActiveException;
 import com.progresso.backend.exception.UserNotFoundException;
 import com.progresso.backend.model.Comment;
 import com.progresso.backend.model.Project;
@@ -35,13 +36,15 @@ public class ProjectService {
   private final ProjectRepository projectRepository;
   private final UserRepository userRepository;
   private final TeamRepository teamRepository;
+  private final CommentService commentService;
 
   @Autowired
   public ProjectService(ProjectRepository projectRepository, UserRepository userRepository,
-      TeamRepository teamRepository) {
+      TeamRepository teamRepository, CommentService commentService) {
     this.projectRepository = projectRepository;
     this.userRepository = userRepository;
     this.teamRepository = teamRepository;
+    this.commentService = commentService;
   }
 
   public ProjectDto convertToDto(Project project) {
@@ -378,6 +381,10 @@ public class ProjectService {
         .orElseThrow(() -> new IllegalArgumentException(
             "Project Manager not found with ID: " + projectDto.getProjectManagerId()));
 
+    if (!projectManager.getActive()) {
+      throw new UserNotActiveException("User " + projectManager.getUsername() + " is not active.");
+    }
+
     if (!projectManager.getRole().equals(Role.PROJECTMANAGER)) {
       throw new IllegalStateException(
           "User with ID " + projectDto.getProjectManagerId() + " is not a project manager.");
@@ -476,24 +483,13 @@ public class ProjectService {
   }
 
   @Transactional
-  public ProjectDto removeProject(Long projectId) {
-    Project project = projectRepository.findById(projectId)
-        .orElseThrow(
-            () -> new ProjectNotFoundException("Project not found with ID: " + projectId));
-
-    project.setStatus(Status.CANCELLED);
-
-    if (!CollectionUtils.isEmpty(project.getTasks())) {
-      project.getTasks().forEach(task -> task.setStatus(Status.CANCELLED));
-    }
-
-    return convertToDto(project);
-  }
-
-  @Transactional
   public ProjectDto updateProjectManager(Long projectId, Long projectManagerId) {
     User projectManager = userRepository.findById(projectManagerId).orElseThrow(
         () -> new UserNotFoundException("User not found with ID: " + projectManagerId));
+
+    if (!projectManager.getActive()) {
+      throw new UserNotActiveException("User " + projectManager.getUsername() + " is not active.");
+    }
 
     if (!projectManager.getRole().equals(Role.PROJECTMANAGER)) {
       throw new InvalidRoleException(
@@ -577,6 +573,25 @@ public class ProjectService {
 
     teamRepository.save(currTeam);
     teamRepository.save(team);
+
+    return convertToDto(project);
+  }
+
+  @Transactional
+  public ProjectDto removeProject(Long projectId) {
+    Project project = projectRepository.findById(projectId)
+        .orElseThrow(
+            () -> new ProjectNotFoundException("Project not found with ID: " + projectId));
+
+    project.setStatus(Status.CANCELLED);
+
+    if (!project.getTasks().isEmpty()) {
+      project.getTasks().forEach(task -> task.setStatus(Status.CANCELLED));
+    }
+
+    if (!CollectionUtils.isEmpty(project.getComments())) {
+      project.getComments().forEach(comment -> commentService.deleteComment(comment.getId()));
+    }
 
     return convertToDto(project);
   }
