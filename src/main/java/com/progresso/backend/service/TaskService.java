@@ -9,6 +9,7 @@ import com.progresso.backend.exception.NoDataFoundException;
 import com.progresso.backend.exception.ProjectNotFoundException;
 import com.progresso.backend.exception.TaskNameAlreadyExistsException;
 import com.progresso.backend.exception.TaskNotFoundException;
+import com.progresso.backend.exception.UserNotActiveException;
 import com.progresso.backend.exception.UserNotFoundException;
 import com.progresso.backend.model.Project;
 import com.progresso.backend.model.Task;
@@ -59,11 +60,6 @@ public class TaskService {
     return taskRepository.findById(taskId)
         .map(task -> task.getProject().getId())
         .orElseThrow(() -> new TaskNotFoundException("Task not found"));
-  }
-
-  private void checkIfUserExists(Long userId) {
-    userRepository.findById(userId).orElseThrow(() ->
-        new UserNotFoundException("User not found with ID: " + userId));
   }
 
   public TaskDto findById(Long taskId) {
@@ -152,7 +148,8 @@ public class TaskService {
   }
 
   public Page<TaskDto> findTasksByUserAndStatus(Long userId, Status status, Pageable pageable) {
-    checkIfUserExists(userId);
+    userRepository.findById(userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
     Page<Task> tasks = taskRepository.findByAssignedUserIdAndStatus(userId, status, pageable);
     if (tasks.isEmpty()) {
       throw new NoDataFoundException(
@@ -162,7 +159,8 @@ public class TaskService {
   }
 
   public Page<TaskDto> findOverdueTasksByUser(Long userId, Pageable pageable) {
-    checkIfUserExists(userId);
+    userRepository.findById(userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
     Page<Task> tasks = taskRepository.findOverdueTasksByUserId(userId, pageable);
     if (tasks.isEmpty()) {
       throw new NoDataFoundException("No overdue tasks found for user with ID: " + userId);
@@ -171,7 +169,8 @@ public class TaskService {
   }
 
   public Page<TaskDto> findTasksByUser(Long userId, Pageable pageable) {
-    checkIfUserExists(userId);
+    userRepository.findById(userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
     Page<Task> tasks = taskRepository.findByAssignedUserId(userId, pageable);
     if (tasks.isEmpty()) {
       throw new NoDataFoundException("No tasks found for user with ID: " + userId);
@@ -298,8 +297,16 @@ public class TaskService {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
+    if (!user.getActive()) {
+      throw new UserNotActiveException("User " + user.getUsername() + " is not active");
+    }
+
     if (!user.getRole().equals(Role.TEAMMEMBER)) {
       throw new InvalidRoleException("This user is not a team member: " + user.getUsername());
+    }
+
+    if (!task.getProject().getTeam().getTeamMembers().contains(user)) {
+      throw new IllegalArgumentException("User " + user.getUsername() + " not found in this team");
     }
 
     if (task.getAssignedUser() != null) {
@@ -329,18 +336,21 @@ public class TaskService {
         .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
-    User currUser = task.getAssignedUser();
+
+    if (!user.getActive()) {
+      throw new UserNotActiveException("User " + user.getUsername() + " is not active");
+    }
 
     if (!task.getProject().getTeam().getTeamMembers().contains(user)) {
       throw new UserNotFoundException(
           "User " + user.getUsername() + " not found this team");
     }
 
-    if (currUser == null) {
+    if (task.getAssignedUser() == null) {
       throw new UserNotFoundException("Task is not assigned to any user");
     }
 
-    if (currUser.equals(user)) {
+    if (task.getAssignedUser().equals(user)) {
       throw new IllegalArgumentException("Task is already assigned to user: " + user.getUsername());
     }
 
@@ -351,10 +361,10 @@ public class TaskService {
     task.setAssignedUser(user);
     taskRepository.save(task);
 
-    currUser.getAssignedTasks().remove(task);
+    task.getAssignedUser().getAssignedTasks().remove(task);
     user.getAssignedTasks().add(task);
 
-    userRepository.save(currUser);
+    userRepository.save(task.getAssignedUser());
     userRepository.save(user);
 
     return convertToDto(task);
@@ -366,6 +376,7 @@ public class TaskService {
         .isBefore(LocalDate.now())) {
       throw new IllegalArgumentException("Start date and due date must be after the current date");
     }
+
     if (taskDto.getStartDate().isAfter(taskDto.getDueDate())) {
       throw new IllegalArgumentException("Start date cannot be after due date");
     }
@@ -411,7 +422,6 @@ public class TaskService {
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
     Task task = project.getTasks().stream().filter(t -> t.getId().equals(taskId)).findFirst()
         .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
-
     User user = task.getAssignedUser();
 
     if (user != null) {
