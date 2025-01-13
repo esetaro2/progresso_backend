@@ -90,7 +90,7 @@ public class UserService {
       throw new InvalidRoleException("Invalid role: " + role);
     }
 
-    Page<UserResponseDto> usersDto = userRepository.findByRole(roleEnum, pageable)
+    Page<UserResponseDto> usersDto = userRepository.findByRoleAndActiveTrue(roleEnum, pageable)
         .map(this::convertToDtoCommon);
 
     if (!usersDto.hasContent()) {
@@ -107,7 +107,8 @@ public class UserService {
     }
 
     Page<UserResponseDto> usersDto = userRepository
-        .findByFirstNameContainingOrLastNameContainingOrUsernameContaining(firstName, lastName,
+        .findByFirstNameContainingOrLastNameContainingOrUsernameContainingAndActiveTrue(firstName,
+            lastName,
             username, pageable).map(this::convertToDtoCommon);
 
     if (!usersDto.hasContent()) {

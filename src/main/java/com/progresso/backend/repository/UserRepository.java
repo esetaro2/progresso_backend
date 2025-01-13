@@ -18,21 +18,24 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @Query("SELECT COUNT(u) FROM User u WHERE  u.role = :role")
   int countByRole(@Param("role") Role role);
 
-  Page<User> findByRole(Role role, Pageable pageable);
+  Page<User> findByRoleAndActiveTrue(Role role, Pageable pageable);
 
-  Page<User> findByFirstNameContainingOrLastNameContainingOrUsernameContaining(String firstName,
+  Page<User> findByFirstNameContainingOrLastNameContainingOrUsernameContainingAndActiveTrue(
+      String firstName,
       String lastName, String username, Pageable pageable);
 
   @Query("SELECT u FROM User u")
   Page<User> findAllUsers(Pageable pageable);
 
-  @Query("SELECT u FROM User u JOIN u.teams t WHERE t.id = :teamId")
+  @Query("SELECT u FROM User u JOIN u.teams t WHERE t.id = :teamId AND u.active = true")
   Page<User> findUsersByTeamId(@Param("teamId") Long teamId, Pageable pageable);
 
-  @Query("SELECT u FROM User u JOIN u.teams t WHERE t.id = :teamId AND u.id = :userId")
+  @Query("SELECT u FROM User u JOIN u.teams t WHERE t.id = :teamId AND u.id = :userId "
+      + "AND u.active = true")
   Optional<User> findUserInTeam(@Param("teamId") Long teamId, @Param("userId") Long userId);
 
-  @Query("SELECT u FROM User u JOIN u.assignedTasks t WHERE t.project.id = :projectId")
+  @Query("SELECT u FROM User u JOIN u.assignedTasks t WHERE t.project.id = :projectId "
+      + "AND u.active = true ")
   Page<User> findUsersByProjectId(@Param("projectId") Long projectId, Pageable pageable);
 
   Page<User> findByActiveTrue(Pageable pageable);
