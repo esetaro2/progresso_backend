@@ -77,8 +77,7 @@ public class User {
   @OneToMany(mappedBy = "projectManager", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   private List<Project> managedProjects;
 
-  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true,
-      fetch = FetchType.EAGER)
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   private List<Comment> comments;
 
   @Column(nullable = false)

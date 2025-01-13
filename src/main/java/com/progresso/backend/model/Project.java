@@ -55,14 +55,13 @@ public class Project {
   @JoinColumn(nullable = false)
   private User projectManager;
 
-  @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true,
+  @OneToMany(mappedBy = "project", cascade = CascadeType.ALL,
       fetch = FetchType.EAGER)
   private List<Task> tasks;
 
   @ManyToOne(fetch = FetchType.EAGER)
   private Team team;
 
-  @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true,
-      fetch = FetchType.EAGER)
+  @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   private List<Comment> comments;
 }
