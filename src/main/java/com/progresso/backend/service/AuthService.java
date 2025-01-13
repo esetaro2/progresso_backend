@@ -149,6 +149,7 @@ public class AuthService {
       String activeProjectsDetails = activeProjects.stream()
           .map(project -> "ID: " + project.getId() + ", Name: " + project.getName())
           .collect(Collectors.joining("\n"));
+
       throw new ActiveProjectsException(
           "User is managing active projects:\n" + activeProjectsDetails
               + "\n Please reassign the project to another project manager");
