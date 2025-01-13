@@ -19,19 +19,22 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
 
   Boolean existsByNameIgnoreCase(String name);
 
-  @Query("SELECT t FROM Team t JOIN t.teamMembers tm WHERE tm.id = :userId")
+  @Query("SELECT t FROM Team t JOIN t.teamMembers tm WHERE tm.id = :userId AND tm.active = true")
   Page<Team> findByTeamMemberId(@Param("userId") Long userId, Pageable pageable);
 
-  @Query("SELECT t FROM Team t WHERE SIZE(t.projects) > 0")
+  @Query("SELECT t FROM Team t WHERE SIZE(t.projects) > 0 AND t.active = true")
   Page<Team> findTeamsWithProjects(Pageable pageable);
 
-  @Query("SELECT t FROM Team t WHERE SIZE(t.teamMembers) > :size")
+  @Query("SELECT t FROM Team t WHERE t.active = true "
+      + "AND (SELECT COUNT(tm) FROM t.teamMembers tm WHERE tm.active = true) > :size")
   Page<Team> findByTeamMembersSizeGreaterThan(@Param("size") int size, Pageable pageable);
 
-  @Query("SELECT t FROM Team t WHERE SIZE(t.teamMembers) = 0")
+  @Query("SELECT t FROM Team t WHERE t.active = true "
+      + "AND (SELECT COUNT(tm) FROM t.teamMembers tm WHERE tm.active = true) = 0")
   Page<Team> findTeamsWithoutMembers(Pageable pageable);
 
-  @Query("SELECT t FROM Team t JOIN t.projects p WHERE p.id = :projectId")
+  @Query("SELECT t FROM Team t JOIN t.projects p WHERE p.id = :projectId "
+      + "AND EXISTS (SELECT tm FROM t.teamMembers tm WHERE tm.active = true)")
   Page<Team> findTeamsByProjectId(@Param("projectId") Long projectId, Pageable pageable);
 
   Page<Team> findTeamsByActive(Boolean active, Pageable pageable);

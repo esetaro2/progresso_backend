@@ -7,6 +7,7 @@ import com.progresso.backend.exception.InvalidRoleException;
 import com.progresso.backend.exception.NoDataFoundException;
 import com.progresso.backend.exception.TeamNameAlreadyExistsException;
 import com.progresso.backend.exception.TeamNotFoundException;
+import com.progresso.backend.exception.UserNotActiveException;
 import com.progresso.backend.exception.UserNotFoundException;
 import com.progresso.backend.model.Project;
 import com.progresso.backend.model.Task;
@@ -22,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 @Service
 public class TeamService {
@@ -43,21 +45,12 @@ public class TeamService {
     teamDto.setId(team.getId());
     teamDto.setName(team.getName());
     teamDto.setActive(team.getActive());
-
     teamDto.setTeamMemberIds(
-        (team.getTeamMembers() == null || team.getTeamMembers().isEmpty())
-            ? new ArrayList<>()
-            : team.getTeamMembers().stream()
-                .map(User::getId)
-                .toList()
-    );
+        !CollectionUtils.isEmpty(team.getTeamMembers()) ? team.getTeamMembers().stream()
+            .map(User::getId).toList() : new ArrayList<>());
     teamDto.setProjectIds(
-        (team.getProjects() == null || team.getProjects().isEmpty())
-            ? new ArrayList<>()
-            : team.getProjects().stream()
-                .map(Project::getId)
-                .toList()
-    );
+        !CollectionUtils.isEmpty(team.getProjects()) ? team.getProjects().stream()
+            .map(Project::getId).toList() : new ArrayList<>());
 
     return teamDto;
   }
@@ -206,6 +199,10 @@ public class TeamService {
 
     if (!team.getActive()) {
       throw new IllegalStateException("Team is not active");
+    }
+
+    if (!user.getActive()) {
+      throw new UserNotActiveException("User + " + user.getUsername() + " is not active");
     }
 
     if (!user.getRole().equals(Role.TEAMMEMBER)) {
