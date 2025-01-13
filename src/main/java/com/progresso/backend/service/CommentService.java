@@ -240,6 +240,10 @@ public class CommentService {
         () -> new ProjectNotFoundException(
             "Project not found with ID: " + commentDto.getProjectId()));
 
+    if (!user.getActive()) {
+      throw new UserNotActiveException("User " + user.getUsername() + " is not active");
+    }
+
     if (project.getStatus().equals(Status.COMPLETED) || project.getStatus()
         .equals(Status.CANCELLED)) {
       throw new IllegalArgumentException("Cannot comment an inactive project");
