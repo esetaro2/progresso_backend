@@ -19,10 +19,5 @@ public class UserLoginDto {
 
   @NotEmpty(message = "Password cannot be empty.")
   @Size(min = 8, max = 8, message = "The password must be 8 characters long.")
-  @Pattern(
-      regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)"
-          + "(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8}$",
-      message = "The password must contain at least one uppercase letter, "
-          + "one lowercase letter, one digit, and one special character.")
   private String password;
 }

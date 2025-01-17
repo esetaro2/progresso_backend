@@ -32,22 +32,23 @@ public class SecurityConfig {
     this.jwtRequestFilter = jwtRequestFilter;
   }
 
-  @SuppressWarnings("checkstyle:CommentsIndentation")
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
         .csrf(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(authorize -> authorize
+            .requestMatchers(HttpMethod.OPTIONS, "/**")
+            .permitAll() // Permetti le richieste OPTIONS per CORS
             .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
             .requestMatchers("/api/projectmanager/**").hasAuthority("PROJECTMANAGER")
             .requestMatchers("/api/teammember/**").hasAuthority("TEAMMEMBER")
 
-            //AUTH
+            // AUTH
             .requestMatchers("/api/auth/login").permitAll()
             .requestMatchers("/api/auth/register").hasAuthority("ADMIN")
             .requestMatchers(HttpMethod.PUT, "/api/auth/{userId}/deactivate").hasAuthority("ADMIN")
 
-            //TEAM
+            // TEAM
             .requestMatchers(HttpMethod.POST, "/api/teams")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
             .requestMatchers(HttpMethod.PUT, "/api/teams/{teamId}")
@@ -58,7 +59,7 @@ public class SecurityConfig {
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
             .requestMatchers(HttpMethod.DELETE, "/api/teams/{teamId}").hasAuthority("ADMIN")
 
-            //TASK
+            // TASK
             .requestMatchers(HttpMethod.POST, "/api/tasks")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
             .requestMatchers(HttpMethod.PUT, "/api/tasks/{taskId}")
@@ -74,7 +75,7 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.DELETE, "/api/tasks/project/{projectId}/task/{taskId}")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
 
-            //PROJECT
+            // PROJECT
             .requestMatchers(HttpMethod.POST, "/api/projects")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
             .requestMatchers(HttpMethod.PUT, "/api/projects/{projectId}")
@@ -98,7 +99,6 @@ public class SecurityConfig {
     return http.build();
   }
 
-
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
@@ -108,6 +108,8 @@ public class SecurityConfig {
   public CorsFilter corsFilter() {
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowedOrigins(List.of("http://localhost:4200"));
+    config.setAllowedMethods(
+        List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type"));
     config.setExposedHeaders(List.of("Authorization"));
     config.setAllowCredentials(true);
