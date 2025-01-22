@@ -18,6 +18,6 @@ public class AgeValidator implements ConstraintValidator<Age, LocalDate> {
     }
 
     int age = Period.between(birthDate, LocalDate.now()).getYears();
-    return age >= 18;
+    return age >= 17;
   }
 }

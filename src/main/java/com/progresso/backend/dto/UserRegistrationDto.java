@@ -37,9 +37,6 @@ public class UserRegistrationDto {
   private LocalDate birthDate;
 
   @NotEmpty(message = "The phone number cannot be empty.")
-  @Pattern(
-      regexp = "^\\d{10}$",
-      message = "The phone number must be in a valid international format.")
   private String phoneNumber;
 
   @NotEmpty(message = "The street address cannot be empty.")
