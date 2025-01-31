@@ -57,7 +57,8 @@ public class ProjectService {
     dto.setDueDate(project.getDueDate());
     dto.setCompletionDate(project.getCompletionDate());
     dto.setStatus(project.getStatus().toString());
-    dto.setProjectManagerId(project.getProjectManager().getId());
+    dto.setProjectManagerId(
+        project.getProjectManager() == null ? null : project.getProjectManager().getId());
     dto.setTaskIds(
         !CollectionUtils.isEmpty(project.getTasks()) ? project.getTasks().stream()
             .map(Task::getId).toList() : new ArrayList<>());
@@ -106,10 +107,100 @@ public class ProjectService {
     return projectManager.getUsername().equals(username);
   }
 
-  public Page<ProjectDto> findAllProjects(Pageable pageable) {
-    Page<ProjectDto> page = projectRepository.findAllProjects(pageable).map(this::convertToDto);
+  public int getProjectCompletionPercentage(Long projectId) {
+    Project project = projectRepository.findById(projectId)
+        .orElseThrow(() -> new ProjectNotFoundException("Project not found"));
+
+    int totalTasks = project.getTasks().size();
+    int completedTasks = 0;
+
+    for (Task task : project.getTasks()) {
+      if (Status.COMPLETED.equals(task.getStatus())) {
+        completedTasks++;
+      }
+    }
+
+    if (totalTasks == 0) {
+      return 0;
+    }
+
+    return (completedTasks * 100) / totalTasks;
+  }
+
+
+  public Page<ProjectDto> findAllProjectsWithFilters(String status, String priority, String name,
+      Pageable pageable) {
+    updateAllProjectsPriorities();
+
+    Status statusEnum = (status != null && EnumUtils.isValidEnum(Status.class, status))
+        ? Status.valueOf(status)
+        : null;
+
+    Priority priorityEnum =
+        (priority != null && EnumUtils.isValidEnum(Priority.class, priority)) ? Priority.valueOf(
+            priority) : null;
+
+    Page<ProjectDto> page = projectRepository.findAllWithFilters(statusEnum, priorityEnum, name,
+        pageable).map(this::convertToDto);
+
     if (page.isEmpty()) {
-      throw new NoDataFoundException("No data found");
+      throw new NoDataFoundException("No projects found with given filters.");
+    }
+
+    return page;
+  }
+
+  public Page<ProjectDto> findProjectsByProjectManagerUsernameAndFilters(String managerUsername,
+      String status, String priority, String name, Pageable pageable) {
+    User projectManager = userRepository.findByUsername(managerUsername)
+        .orElseThrow(() -> new UserNotFoundException(
+            "Project Manager not found with username: " + managerUsername));
+
+    if (!projectManager.getRole().equals(Role.PROJECTMANAGER)) {
+      throw new InvalidRoleException(
+          "The user is not a project manager: " + projectManager.getUsername());
+    }
+
+    updateAllProjectsPriorities();
+
+    Status statusEnum = (status != null && EnumUtils.isValidEnum(Status.class, status))
+        ? Status.valueOf(status)
+        : null;
+
+    Priority priorityEnum = (priority != null && EnumUtils.isValidEnum(Priority.class, priority))
+        ? Priority.valueOf(priority)
+        : null;
+
+    Page<ProjectDto> page = projectRepository.findByProjectManagerUsernameAndFilters(
+        managerUsername,
+        statusEnum, priorityEnum, name, pageable).map(this::convertToDto);
+
+    if (page.isEmpty()) {
+      throw new NoDataFoundException(
+          "No project found of " + projectManager.getUsername() + " with given filters.");
+    }
+
+    return page;
+  }
+
+  public Page<ProjectDto> findProjectsByTeamMemberUsernameAndFilters(String teamMemberUsername,
+      String status, String priority, String name, Pageable pageable) {
+    updateAllProjectsPriorities();
+
+    Status statusEnum = (status != null && EnumUtils.isValidEnum(Status.class, status))
+        ? Status.valueOf(status)
+        : null;
+
+    Priority priorityEnum = (priority != null && EnumUtils.isValidEnum(Priority.class, priority))
+        ? Priority.valueOf(priority)
+        : null;
+
+    Page<ProjectDto> page = projectRepository.findByTeamMemberUsernameAndFilters(teamMemberUsername,
+        statusEnum, priorityEnum, name, pageable).map(this::convertToDto);
+
+    if (page.isEmpty()) {
+      throw new NoDataFoundException(
+          "No project found of " + teamMemberUsername + " with given filters.");
     }
 
     return page;
@@ -121,18 +212,6 @@ public class ProjectService {
     project.setPriority(updateProjectPriority(project));
     projectRepository.save(project);
     return convertToDto(project);
-  }
-
-  public Page<ProjectDto> findProjectsByStatus(Status status, Pageable pageable) {
-    updateAllProjectsPriorities();
-
-    Page<ProjectDto> page = projectRepository.findByStatus(status, pageable)
-        .map(this::convertToDto);
-    if (page.isEmpty()) {
-      throw new NoDataFoundException("No project found with status: " + status);
-    }
-
-    return page;
   }
 
   public Page<ProjectDto> findByStatusAndPriority(String status, String priority,
@@ -198,45 +277,6 @@ public class ProjectService {
     }
 
     return projects.map(this::convertToDto);
-  }
-
-  public Page<ProjectDto> findProjectsByProjectManager(Long projectManagerId, Pageable pageable) {
-    User projectManager = userRepository.findById(projectManagerId)
-        .orElseThrow(() -> new UserNotFoundException(
-            "Project Manager not found with ID: " + projectManagerId));
-
-    if (!projectManager.getRole().equals(Role.PROJECTMANAGER)) {
-      throw new InvalidRoleException(
-          "The user is not a project manager: " + projectManager.getUsername());
-    }
-
-    updateAllProjectsPriorities();
-
-    Page<ProjectDto> page = projectRepository.findByProjectManagerId(projectManagerId, pageable)
-        .map(this::convertToDto);
-    if (page.isEmpty()) {
-      throw new NoDataFoundException(
-          "No project found with project manager: " + projectManager.getUsername());
-    }
-
-    return page;
-  }
-
-  public Page<ProjectDto> findByPriority(String priority, Pageable pageable) {
-    if (!EnumUtils.isValidEnum(Priority.class, priority)) {
-      throw new IllegalArgumentException("Invalid priority: " + priority);
-    }
-
-    updateAllProjectsPriorities();
-
-    Page<ProjectDto> page = projectRepository.findByPriority(Priority.valueOf(priority), pageable)
-        .map(this::convertToDto);
-    if (page.isEmpty()) {
-      throw new NoDataFoundException(
-          "No project found with priority: " + priority);
-    }
-
-    return page;
   }
 
   public Page<ProjectDto> findByCompletionDateAfter(LocalDate completionDate, Pageable pageable) {
@@ -377,25 +417,6 @@ public class ProjectService {
       throw new IllegalArgumentException("Start date cannot be after due date.");
     }
 
-    User projectManager = userRepository.findById(projectDto.getProjectManagerId())
-        .orElseThrow(() -> new IllegalArgumentException(
-            "Project Manager not found with ID: " + projectDto.getProjectManagerId()));
-
-    if (!projectManager.getActive()) {
-      throw new UserNotActiveException("User " + projectManager.getUsername() + " is not active.");
-    }
-
-    if (!projectManager.getRole().equals(Role.PROJECTMANAGER)) {
-      throw new IllegalStateException(
-          "User with ID " + projectDto.getProjectManagerId() + " is not a project manager.");
-    }
-
-    if (projectRepository.countByProjectManagerAndStatusNotIn(projectManager,
-        List.of(Status.CANCELLED, Status.COMPLETED)) >= 5) {
-      throw new IllegalArgumentException(
-          "Project Manager cannot manage more than 5 active projects.");
-    }
-
     if (projectRepository.existsByName(projectDto.getName())) {
       throw new IllegalArgumentException("Project name already exists.");
     }
@@ -407,7 +428,6 @@ public class ProjectService {
     project.setDueDate(projectDto.getDueDate());
     project.setPriority(updateProjectPriority(project));
     project.setStatus(Status.NOT_STARTED);
-    project.setProjectManager(projectManager);
 
     Project savedProject = projectRepository.save(project);
     return convertToDto(savedProject);

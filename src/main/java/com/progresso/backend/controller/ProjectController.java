@@ -1,7 +1,6 @@
 package com.progresso.backend.controller;
 
 import com.progresso.backend.dto.ProjectDto;
-import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.service.ProjectService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -17,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -31,38 +31,59 @@ public class ProjectController {
     this.projectService = projectService;
   }
 
+  @GetMapping("/{projectId}/completion")
+  public ResponseEntity<Integer> getProjectCompletionPercentage(@PathVariable Long projectId) {
+    int percentage = projectService.getProjectCompletionPercentage(projectId);
+    return ResponseEntity.ok(percentage);
+  }
+
+  @PreAuthorize("hasAuthority('ADMIN')")
   @GetMapping
-  public ResponseEntity<Page<ProjectDto>> getAllProjects(Pageable pageable) {
-    Page<ProjectDto> page = projectService.findAllProjects(pageable);
-    return ResponseEntity.ok(page);
+  public ResponseEntity<Page<ProjectDto>> getAllProjectsByFilters(
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) String priority,
+      @RequestParam(required = false) String name,
+      Pageable pageable
+  ) {
+    Page<ProjectDto> projects = projectService.findAllProjectsWithFilters(status, priority, name,
+        pageable);
+
+    return ResponseEntity.ok(projects);
+  }
+
+  @PreAuthorize("hasAuthority('ADMIN') OR "
+      + "(hasAuthority('PROJECTMANAGER') and #managerUsername == authentication.name)")
+  @GetMapping("/manager/{managerUsername}")
+  public ResponseEntity<Page<ProjectDto>> getProjectsByManagerAndFilters(
+      @PathVariable String managerUsername,
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) String priority,
+      @RequestParam(required = false) String name,
+      Pageable pageable) {
+    Page<ProjectDto> projects = projectService.findProjectsByProjectManagerUsernameAndFilters(
+        managerUsername,
+        status, priority, name, pageable);
+    return ResponseEntity.ok(projects);
+  }
+
+  @PreAuthorize("hasAuthority('ADMIN') OR "
+      + "(hasAuthority('TEAMMEMBER') and #teamMemberUsername == authentication.name)")
+  @GetMapping("/teamMember/{teamMemberUsername}")
+  public ResponseEntity<Page<ProjectDto>> getProjectsByTeamMemberUsernameAndFilters(
+      @PathVariable String teamMemberUsername,
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) String priority,
+      @RequestParam(required = false) String name,
+      Pageable pageable) {
+    Page<ProjectDto> projects = projectService.findProjectsByTeamMemberUsernameAndFilters(
+        teamMemberUsername, status, priority, name, pageable);
+    return ResponseEntity.ok(projects);
   }
 
   @GetMapping("/{id}")
   public ResponseEntity<ProjectDto> getProjectById(@PathVariable Long id) {
     ProjectDto project = projectService.findProjectById(id);
     return ResponseEntity.ok(project);
-  }
-
-  @GetMapping("/status/{status}")
-  public ResponseEntity<Page<ProjectDto>> getProjectsByStatus(@PathVariable String status,
-      Pageable pageable) {
-    Status projectStatus = Status.valueOf(status);
-    Page<ProjectDto> projects = projectService.findProjectsByStatus(projectStatus, pageable);
-    return ResponseEntity.ok(projects);
-  }
-
-  @GetMapping("/manager/{managerId}")
-  public ResponseEntity<Page<ProjectDto>> getProjectsByManager(@PathVariable Long managerId,
-      Pageable pageable) {
-    Page<ProjectDto> projects = projectService.findProjectsByProjectManager(managerId, pageable);
-    return ResponseEntity.ok(projects);
-  }
-
-  @GetMapping("/priority/{priority}")
-  public ResponseEntity<Page<ProjectDto>> getProjectsByPriority(@PathVariable String priority,
-      Pageable pageable) {
-    Page<ProjectDto> projects = projectService.findByPriority(priority, pageable);
-    return ResponseEntity.ok(projects);
   }
 
   @GetMapping("/due-before/{date}")
@@ -162,7 +183,7 @@ public class ProjectController {
     return ResponseEntity.ok(projects);
   }
 
-  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
+  @PreAuthorize("hasAuthority('ADMIN')")
   @PostMapping
   public ResponseEntity<ProjectDto> createProject(@Valid @RequestBody ProjectDto projectDto) {
     ProjectDto createdProject = projectService.createProject(projectDto);
@@ -201,8 +222,7 @@ public class ProjectController {
     return ResponseEntity.ok(updatedProject);
   }
 
-  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
-      + "and @projectService.isManagerOfProject(#projectId, authentication.name))")
+  @PreAuthorize("hasAuthority('ADMIN')")
   @PutMapping("/{projectId}/assign-team/{teamId}")
   public ResponseEntity<ProjectDto> assignTeamToProject(
       @PathVariable Long projectId,
@@ -213,8 +233,7 @@ public class ProjectController {
     return ResponseEntity.ok(updatedProject);
   }
 
-  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
-      + "and @projectService.isManagerOfProject(#projectId, authentication.name))")
+  @PreAuthorize("hasAuthority('ADMIN')")
   @PutMapping("/{projectId}/reassign-team/{teamId}")
   public ResponseEntity<ProjectDto> reassignTeamToProject(
       @PathVariable Long projectId,

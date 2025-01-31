@@ -11,7 +11,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import java.time.LocalDate;
@@ -52,7 +51,6 @@ public class Project {
   private Status status;
 
   @ManyToOne(fetch = FetchType.EAGER)
-  @JoinColumn(nullable = false)
   private User projectManager;
 
   @OneToMany(mappedBy = "project", cascade = CascadeType.ALL,
