@@ -17,6 +17,7 @@ import com.progresso.backend.repository.ProjectRepository;
 import com.progresso.backend.repository.TeamRepository;
 import com.progresso.backend.repository.UserRepository;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -91,33 +92,45 @@ public class UserService {
   }
 
   public Page<UserResponseDto> getAvailableProjectManagers(Pageable pageable, String searchTerm) {
-    Page<UserResponseDto> page = getUsersByRole("PROJECTMANAGER", pageable);
+    Page<User> page = userRepository.findByRoleAndActiveTrue(Role.PROJECTMANAGER,
+        Pageable.unpaged());
 
-    List<UserResponseDto> availablePms = page.getContent().stream()
+    List<User> filteredUsers = page.getContent().stream()
         .filter(pm -> {
-          User projectManager = userRepository.findById(pm.getId())
-              .orElseThrow(
-                  () -> new UserNotFoundException("User not found with ID: " + pm.getId()));
+          if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            String[] searchTerms = searchTerm.toLowerCase().trim().split("\\s+");
 
-          long activeProjects = projectRepository.countByProjectManagerAndStatusNotIn(
-              projectManager, List.of(Status.CANCELLED, Status.COMPLETED));
+            String combinedFields = (pm.getFirstName() + " " + pm.getLastName() + " "
+                + pm.getUsername())
+                .toLowerCase();
 
-          return activeProjects < 5;
-        })
-        .filter(pm -> {
-          if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return Arrays.stream(searchTerms)
+                .allMatch(combinedFields::contains);
+          } else {
             return true;
           }
-          String lowerSearchTerm = searchTerm.toLowerCase();
-          return pm.getFirstName().toLowerCase().contains(lowerSearchTerm)
-              || pm.getLastName().toLowerCase().contains(lowerSearchTerm)
-              || pm.getUsername().toLowerCase().contains(lowerSearchTerm);
+        })
+        .filter(pm -> {
+          long activeProjects = projectRepository.countByProjectManagerAndStatusNotIn(
+              pm, List.of(Status.CANCELLED, Status.COMPLETED));
+          return activeProjects < 5;
         })
         .toList();
 
-    return new PageImpl<>(availablePms, pageable, availablePms.size());
-  }
+    int start = (int) pageable.getOffset();
+    int end = Math.min((start + pageable.getPageSize()), filteredUsers.size());
+    List<UserResponseDto> paginatedList;
 
+    if (start <= end) {
+      paginatedList = filteredUsers.subList(start, end).stream()
+          .map(this::convertToDtoCommon)
+          .toList();
+    } else {
+      paginatedList = new ArrayList<>();
+    }
+
+    return new PageImpl<>(paginatedList, pageable, filteredUsers.size());
+  }
 
   public Page<UserResponseDto> getUsersByRole(String role, Pageable pageable) {
     Role roleEnum = EnumUtils.getEnum(Role.class, role.toUpperCase());

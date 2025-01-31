@@ -36,6 +36,7 @@ public class ProjectDto {
 
   private String status;
 
+  @NotNull(message = "Project manager ID cannot be null")
   private Long projectManagerId;
 
   private List<Long> taskIds;

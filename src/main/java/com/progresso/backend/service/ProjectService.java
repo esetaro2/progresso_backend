@@ -57,8 +57,7 @@ public class ProjectService {
     dto.setDueDate(project.getDueDate());
     dto.setCompletionDate(project.getCompletionDate());
     dto.setStatus(project.getStatus().toString());
-    dto.setProjectManagerId(
-        project.getProjectManager() == null ? null : project.getProjectManager().getId());
+    dto.setProjectManagerId(project.getProjectManager().getId());
     dto.setTaskIds(
         !CollectionUtils.isEmpty(project.getTasks()) ? project.getTasks().stream()
             .map(Task::getId).toList() : new ArrayList<>());
@@ -421,9 +420,19 @@ public class ProjectService {
       throw new IllegalArgumentException("Project name already exists.");
     }
 
+    User projectManager = userRepository.findById(projectDto.getProjectManagerId()).orElseThrow(
+        () -> new UserNotFoundException(
+            "User not found with ID: " + projectDto.getProjectManagerId()));
+
+    if (!projectManager.getRole().equals(Role.PROJECTMANAGER)) {
+      throw new InvalidRoleException(
+          "User is not a project manager: " + projectManager.getUsername());
+    }
+
     Project project = new Project();
     project.setName(projectDto.getName());
     project.setDescription(projectDto.getDescription());
+    project.setProjectManager(projectManager);
     project.setStartDate(projectDto.getStartDate());
     project.setDueDate(projectDto.getDueDate());
     project.setPriority(updateProjectPriority(project));
