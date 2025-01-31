@@ -3,6 +3,7 @@ package com.progresso.backend.service;
 import com.progresso.backend.dto.LoginResponseDto;
 import com.progresso.backend.dto.UserResponseDto;
 import com.progresso.backend.enumeration.Role;
+import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.exception.InvalidRoleException;
 import com.progresso.backend.exception.NoDataFoundException;
 import com.progresso.backend.exception.TeamNotFoundException;
@@ -12,12 +13,15 @@ import com.progresso.backend.model.Project;
 import com.progresso.backend.model.Task;
 import com.progresso.backend.model.Team;
 import com.progresso.backend.model.User;
+import com.progresso.backend.repository.ProjectRepository;
 import com.progresso.backend.repository.TeamRepository;
 import com.progresso.backend.repository.UserRepository;
 import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -27,10 +31,13 @@ public class UserService {
 
   private final UserRepository userRepository;
   private final TeamRepository teamRepository;
+  private final ProjectRepository projectRepository;
 
-  public UserService(UserRepository userRepository, TeamRepository teamRepository) {
+  public UserService(UserRepository userRepository, TeamRepository teamRepository,
+      ProjectRepository projectRepository) {
     this.userRepository = userRepository;
     this.teamRepository = teamRepository;
+    this.projectRepository = projectRepository;
   }
 
   private UserResponseDto convertToDtoCommon(User user) {
@@ -82,6 +89,35 @@ public class UserService {
 
     return usersDto;
   }
+
+  public Page<UserResponseDto> getAvailableProjectManagers(Pageable pageable, String searchTerm) {
+    Page<UserResponseDto> page = getUsersByRole("PROJECTMANAGER", pageable);
+
+    List<UserResponseDto> availablePms = page.getContent().stream()
+        .filter(pm -> {
+          User projectManager = userRepository.findById(pm.getId())
+              .orElseThrow(
+                  () -> new UserNotFoundException("User not found with ID: " + pm.getId()));
+
+          long activeProjects = projectRepository.countByProjectManagerAndStatusNotIn(
+              projectManager, List.of(Status.CANCELLED, Status.COMPLETED));
+
+          return activeProjects < 5;
+        })
+        .filter(pm -> {
+          if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return true;
+          }
+          String lowerSearchTerm = searchTerm.toLowerCase();
+          return pm.getFirstName().toLowerCase().contains(lowerSearchTerm)
+              || pm.getLastName().toLowerCase().contains(lowerSearchTerm)
+              || pm.getUsername().toLowerCase().contains(lowerSearchTerm);
+        })
+        .toList();
+
+    return new PageImpl<>(availablePms, pageable, availablePms.size());
+  }
+
 
   public Page<UserResponseDto> getUsersByRole(String role, Pageable pageable) {
     Role roleEnum = EnumUtils.getEnum(Role.class, role.toUpperCase());
