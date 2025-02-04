@@ -29,6 +29,7 @@ public class UserController {
     return ResponseEntity.ok(userService.getUserById(userId));
   }
 
+  @PreAuthorize("hasAuthority('ADMIN')")
   @GetMapping
   public ResponseEntity<Page<UserResponseDto>> getAllUsers(Pageable pageable) {
     Page<UserResponseDto> usersDto = userService.getAllUsers(pageable);
@@ -36,13 +37,25 @@ public class UserController {
   }
 
   @PreAuthorize("hasAuthority('ADMIN')")
-  @GetMapping("/availablePms")
+  @GetMapping("/available-project-managers")
   public ResponseEntity<Page<UserResponseDto>> getAvailablePms(Pageable pageable,
       @RequestParam(required = false) String searchTerm) {
     Page<UserResponseDto> usersDto = userService.getAvailableProjectManagers(pageable, searchTerm);
     return ResponseEntity.ok(usersDto);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
+  @GetMapping("/available-team-members")
+  public ResponseEntity<Page<UserResponseDto>> getAvailableTeamMembers(
+      @RequestParam(required = false) String searchTerm,
+      Pageable pageable) {
+
+    Page<UserResponseDto> availableMembers = userService.getAvailableTeamMembers(pageable,
+        searchTerm);
+    return ResponseEntity.ok(availableMembers);
+  }
+
+  @PreAuthorize("hasAuthority('ADMIN')")
   @GetMapping("/role/{roleName}")
   public ResponseEntity<Page<UserResponseDto>> getUsersByRole(
       @PathVariable String roleName,
@@ -51,6 +64,7 @@ public class UserController {
     return ResponseEntity.ok(usersDto);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN')")
   @GetMapping("/search")
   public ResponseEntity<Page<UserResponseDto>> searchUsers(
       @RequestParam(required = false) String firstName,

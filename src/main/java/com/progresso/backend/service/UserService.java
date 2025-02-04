@@ -129,8 +129,50 @@ public class UserService {
       paginatedList = new ArrayList<>();
     }
 
+    if (paginatedList.isEmpty()) {
+      throw new NoDataFoundException("No available project managers.");
+    }
+
     return new PageImpl<>(paginatedList, pageable, filteredUsers.size());
   }
+
+  public Page<UserResponseDto> getAvailableTeamMembers(Pageable pageable, String searchTerm) {
+    Page<User> page = userRepository.findByRoleAndActiveTrue(Role.TEAMMEMBER, Pageable.unpaged());
+
+    List<User> filteredUsers = page.getContent().stream()
+        .filter(user -> {
+          if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            String[] searchTerms = searchTerm.toLowerCase().trim().split("\\s+");
+            String combinedFields = (user.getFirstName() + " " + user.getLastName() + " "
+                + user.getUsername())
+                .toLowerCase();
+            return Arrays.stream(searchTerms).allMatch(combinedFields::contains);
+          }
+          return true;
+        })
+        .filter(user -> user.getTeams().stream()
+            .noneMatch(Team::getActive)) // Utente non deve essere in un altro team attivo
+        .toList();
+
+    int start = (int) pageable.getOffset();
+    int end = Math.min((start + pageable.getPageSize()), filteredUsers.size());
+
+    List<UserResponseDto> paginatedList;
+    if (start <= end) {
+      paginatedList = filteredUsers.subList(start, end).stream()
+          .map(this::convertToDtoCommon)
+          .toList();
+    } else {
+      paginatedList = new ArrayList<>();
+    }
+
+    if (paginatedList.isEmpty()) {
+      throw new NoDataFoundException("No available team members.");
+    }
+
+    return new PageImpl<>(paginatedList, pageable, filteredUsers.size());
+  }
+
 
   public Page<UserResponseDto> getUsersByRole(String role, Pageable pageable) {
     Role roleEnum = EnumUtils.getEnum(Role.class, role.toUpperCase());
