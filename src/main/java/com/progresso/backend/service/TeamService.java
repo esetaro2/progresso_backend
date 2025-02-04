@@ -85,7 +85,6 @@ public class TeamService {
     return teamsDto;
   }
 
-  @Transactional
   public Page<TeamDto> getTeamsByMemberId(Long userId, Pageable pageable) {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
@@ -113,6 +112,23 @@ public class TeamService {
 
     return teams.map(this::convertToDto);
   }
+
+  public Page<TeamDto> getTeamsWithoutActiveProjects(Pageable pageable, String searchTerm) {
+    List<Status> activeStatuses = List.of(Status.NOT_STARTED, Status.IN_PROGRESS);
+
+    String processedSearchTerm =
+        (searchTerm != null && !searchTerm.trim().isEmpty()) ? searchTerm.trim() : null;
+
+    Page<Team> teams = teamRepository.findTeamsWithoutActiveProjects(activeStatuses,
+        processedSearchTerm, pageable);
+
+    if (teams.isEmpty()) {
+      throw new NoDataFoundException("No available teams found.");
+    }
+
+    return teams.map(this::convertToDto);
+  }
+
 
   public Page<TeamDto> getTeamsWithMinMembers(int size, Pageable pageable) {
     Page<Team> teams = teamRepository.findByTeamMembersSizeGreaterThan(size, pageable);
@@ -144,7 +160,6 @@ public class TeamService {
     return teams.map(this::convertToDto);
   }
 
-  @Transactional
   public Page<TeamDto> getTeamsByActive(Boolean active, Pageable pageable) {
     Page<Team> teams = teamRepository.findTeamsByActive(active, pageable);
 
@@ -156,14 +171,14 @@ public class TeamService {
   }
 
   @Transactional
-  public TeamDto createTeam(TeamDto teamDto) {
-    if (teamRepository.existsByNameIgnoreCase(teamDto.getName())) {
+  public TeamDto createTeam(String teamName) {
+    if (teamRepository.existsByNameIgnoreCase(teamName)) {
       throw new TeamNameAlreadyExistsException(
-          "A team with the name " + teamDto.getName() + " already exists.");
+          "A team with the name " + teamName + " already exists.");
     }
 
     Team team = new Team();
-    team.setName(teamDto.getName());
+    team.setName(teamName);
     team.setActive(true);
     team = teamRepository.save(team);
 
@@ -187,34 +202,38 @@ public class TeamService {
   }
 
   @Transactional
-  public TeamDto addMemberToTeam(Long teamId, Long userId) {
+  public TeamDto addMembersToTeam(Long teamId, List<Long> userIds) {
     Team team = teamRepository.findById(teamId)
         .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
-    if (team.getTeamMembers().contains(user)) {
-      throw new IllegalArgumentException("Team already has member " + user.getUsername());
+    List<User> users = userRepository.findAllById(userIds);
+
+    for (User member : users) {
+      if (team.getTeamMembers().contains(member)) {
+        throw new IllegalArgumentException("Team already has member " + member.getUsername());
+      }
+
+      if (!team.getActive()) {
+        throw new IllegalStateException("Team is not active");
+      }
+
+      if (!member.getActive()) {
+        throw new UserNotActiveException("User " + member.getUsername() + " is not active");
+      }
+
+      if (!member.getRole().equals(Role.TEAMMEMBER)) {
+        throw new InvalidRoleException(
+            "User " + member.getUsername() + " does not have the required role.");
+      }
+
+      if (member.getTeams().stream().anyMatch(Team::getActive)) {
+        throw new IllegalStateException(
+            "User " + member.getUsername() + " is already active in another team");
+      }
+
+      team.getTeamMembers().add(member);
+      member.getTeams().add(team);
     }
-
-    if (!team.getActive()) {
-      throw new IllegalStateException("Team is not active");
-    }
-
-    if (!user.getActive()) {
-      throw new UserNotActiveException("User + " + user.getUsername() + " is not active");
-    }
-
-    if (!user.getRole().equals(Role.TEAMMEMBER)) {
-      throw new InvalidRoleException("User does not have the required role.");
-    }
-
-    if (user.getTeams().stream().anyMatch(Team::getActive)) {
-      throw new IllegalStateException("User is already active in another team");
-    }
-
-    team.getTeamMembers().add(user);
-    user.getTeams().add(team);
 
     team = teamRepository.save(team);
 
@@ -222,33 +241,48 @@ public class TeamService {
   }
 
   @Transactional
-  public TeamDto removeMemberFromTeam(Long teamId, Long userId) {
+  public TeamDto removeMembersFromTeam(Long teamId, List<Long> userIds) {
     Team team = teamRepository.findById(teamId)
         .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
-    if (!team.getTeamMembers().contains(user)) {
-      throw new IllegalArgumentException("User is not a member of the team.");
+    List<User> users = userRepository.findAllById(userIds);
+
+    if (users.size() != userIds.size()) {
+      List<Long> foundIds = users.stream().map(User::getId).toList();
+      List<Long> notFoundIds = new ArrayList<>(userIds);
+      notFoundIds.removeAll(foundIds);
+      throw new UserNotFoundException("Users not found with IDs: " + notFoundIds);
+    }
+
+    for (User user : users) {
+      if (!team.getTeamMembers().contains(user)) {
+        throw new IllegalArgumentException(
+            "User with ID " + user.getId() + " is not a member of the team.");
+      }
     }
 
     List<Task> tasksToRemove = new ArrayList<>();
 
-    for (Task task : user.getAssignedTasks()) {
-      if (task.getProject().getTeam().equals(team)) {
-        task.setAssignedUser(null);
-        tasksToRemove.add(task);
-        taskRepository.save(task);
+    for (User user : users) {
+      for (Task task : user.getAssignedTasks()) {
+        if (task.getProject().getTeam().equals(team)) {
+          task.setAssignedUser(null);
+          tasksToRemove.add(task);
+        }
       }
+      user.getAssignedTasks().removeAll(tasksToRemove);
+      tasksToRemove.clear();
     }
 
-    user.getAssignedTasks().removeAll(tasksToRemove);
+    taskRepository.saveAll(tasksToRemove);
 
-    team.getTeamMembers().remove(user);
-    user.getTeams().remove(team);
+    for (User user : users) {
+      team.getTeamMembers().remove(user);
+      user.getTeams().remove(team);
+    }
 
-    team = teamRepository.save(team);
-    userRepository.save(user);
+    teamRepository.save(team);
+    userRepository.saveAll(users);
 
     return convertToDto(team);
   }
