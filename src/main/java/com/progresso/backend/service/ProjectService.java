@@ -489,29 +489,6 @@ public class ProjectService {
   }
 
   @Transactional
-  public ProjectDto completeProject(Long projectId) {
-    Project project = projectRepository.findById(projectId)
-        .orElseThrow(
-            () -> new ProjectNotFoundException("Project not found with ID: " + projectId));
-
-    if (project.getStatus().equals(Status.COMPLETED)) {
-      throw new IllegalStateException("Project is already completed.");
-    }
-
-    if (project.getTasks().stream()
-        .anyMatch(task -> !task.getStatus().equals(Status.COMPLETED))) {
-      throw new IllegalStateException("At least one task is not completed.");
-    }
-
-    project.setStatus(Status.COMPLETED);
-    project.setCompletionDate(LocalDate.now());
-
-    Project updatedProject = projectRepository.save(project);
-
-    return convertToDto(updatedProject);
-  }
-
-  @Transactional
   public ProjectDto updateProjectManager(Long projectId, Long projectManagerId) {
     User projectManager = userRepository.findById(projectManagerId).orElseThrow(
         () -> new UserNotFoundException("User not found with ID: " + projectManagerId));
@@ -607,6 +584,34 @@ public class ProjectService {
   }
 
   @Transactional
+  public ProjectDto completeProject(Long projectId) {
+    Project project = projectRepository.findById(projectId)
+        .orElseThrow(
+            () -> new ProjectNotFoundException("Project not found with ID: " + projectId));
+
+    if (project.getStatus().equals(Status.COMPLETED)) {
+      throw new IllegalStateException("Project is already completed.");
+    }
+
+    if (project.getTasks().stream()
+        .anyMatch(task -> !task.getStatus().equals(Status.COMPLETED))) {
+      throw new IllegalStateException("At least one task is not completed.");
+    }
+
+    if (project.getTeam().getActive()) {
+      project.getTeam().setActive(false);
+      teamRepository.save(project.getTeam());
+    }
+
+    project.setStatus(Status.COMPLETED);
+    project.setCompletionDate(LocalDate.now());
+
+    Project updatedProject = projectRepository.save(project);
+
+    return convertToDto(updatedProject);
+  }
+
+  @Transactional
   public ProjectDto removeProject(Long projectId) {
     Project project = projectRepository.findById(projectId)
         .orElseThrow(
@@ -620,6 +625,11 @@ public class ProjectService {
 
     if (!CollectionUtils.isEmpty(project.getComments())) {
       project.getComments().forEach(comment -> commentService.deleteComment(comment.getId()));
+    }
+
+    if (project.getTeam().getActive()) {
+      project.getTeam().setActive(false);
+      teamRepository.save(project.getTeam());
     }
 
     return convertToDto(project);

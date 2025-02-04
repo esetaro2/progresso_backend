@@ -202,7 +202,8 @@ public class ProjectController {
     return ResponseEntity.ok(updatedProject);
   }
 
-  @PreAuthorize("hasAuthority('ADMIN')")
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#projectId, authentication.name))")
   @PutMapping("/{projectId}/remove")
   public ResponseEntity<ProjectDto> removeProject(@PathVariable Long projectId) {
 
