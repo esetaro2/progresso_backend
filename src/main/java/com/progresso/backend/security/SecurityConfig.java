@@ -45,6 +45,7 @@ public class SecurityConfig {
 
             // AUTH
             .requestMatchers("/api/auth/login").permitAll()
+            .requestMatchers("/api/auth/logout").permitAll()
             .requestMatchers("/api/auth/register").hasAuthority("ADMIN")
             .requestMatchers(HttpMethod.PUT, "/api/auth/{userId}/deactivate").hasAuthority("ADMIN")
 
@@ -109,7 +110,7 @@ public class SecurityConfig {
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowedOrigins(List.of("http://localhost:4200"));
     config.setAllowedMethods(
-        List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type"));
     config.setExposedHeaders(List.of("Authorization"));
     config.setAllowCredentials(true);
