@@ -86,22 +86,6 @@ public class ProjectController {
     return ResponseEntity.ok(project);
   }
 
-  @GetMapping("/due-before/{date}")
-  public ResponseEntity<Page<ProjectDto>> getProjectsDueBefore(@PathVariable String date,
-      Pageable pageable) {
-    LocalDate dueDate = LocalDate.parse(date);
-    Page<ProjectDto> projects = projectService.findProjectsDueBefore(dueDate, pageable);
-    return ResponseEntity.ok(projects);
-  }
-
-  @GetMapping("/completion-after/{date}")
-  public ResponseEntity<Page<ProjectDto>> getProjectsCompletionAfter(@PathVariable String date,
-      Pageable pageable) {
-    LocalDate dueDate = LocalDate.parse(date);
-    Page<ProjectDto> projects = projectService.findByCompletionDateAfter(dueDate, pageable);
-    return ResponseEntity.ok(projects);
-  }
-
   @GetMapping("/manager/{managerId}/active")
   public ResponseEntity<Page<ProjectDto>> getActiveProjectsByManager(@PathVariable Long managerId,
       Pageable pageable) {
@@ -144,43 +128,6 @@ public class ProjectController {
       Pageable pageable) {
     Page<ProjectDto> page = projectService.findActiveByTeamId(teamId, pageable);
     return ResponseEntity.ok(page);
-  }
-
-  @GetMapping("/status/{status}/priority/{priority}")
-  public ResponseEntity<Page<ProjectDto>> getProjectsByStatusAndPriority(
-      @PathVariable String status,
-      @PathVariable String priority,
-      Pageable pageable) {
-
-    Page<ProjectDto> projects = projectService.findByStatusAndPriority(status, priority, pageable);
-
-    return ResponseEntity.ok(projects);
-  }
-
-  @GetMapping("/start-date-between/{startDate}/{endDate}")
-  public ResponseEntity<Page<ProjectDto>> getProjectsByStartDateBetween(
-      @PathVariable String startDate,
-      @PathVariable String endDate,
-      Pageable pageable) {
-
-    LocalDate start = LocalDate.parse(startDate);
-    LocalDate end = LocalDate.parse(endDate);
-
-    Page<ProjectDto> projects = projectService.findByStartDateBetween(start, end, pageable);
-
-    return ResponseEntity.ok(projects);
-  }
-
-  @GetMapping("/completion-date-before/{completionDate}")
-  public ResponseEntity<Page<ProjectDto>> getProjectsByCompletionDateBefore(
-      @PathVariable String completionDate,
-      Pageable pageable) {
-
-    LocalDate completion = LocalDate.parse(completionDate);
-
-    Page<ProjectDto> projects = projectService.findByCompletionDateBefore(completion, pageable);
-
-    return ResponseEntity.ok(projects);
   }
 
   @PreAuthorize("hasAuthority('ADMIN')")
