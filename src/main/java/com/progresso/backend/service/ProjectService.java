@@ -78,8 +78,6 @@ public class ProjectService {
     if (currentDate.isAfter(startDate) || currentDate.equals(startDate)) {
       long daysRemaining = ChronoUnit.DAYS.between(currentDate, dueDate);
 
-      System.out.println("DaysRemaining: " + daysRemaining);
-
       if (daysRemaining <= 7) {
         priority = Priority.HIGH;
       } else if (daysRemaining <= 30) {
