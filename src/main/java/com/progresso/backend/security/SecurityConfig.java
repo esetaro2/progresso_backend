@@ -45,7 +45,6 @@ public class SecurityConfig {
 
             // AUTH
             .requestMatchers("/api/auth/login").permitAll()
-            .requestMatchers("/api/auth/logout").permitAll()
             .requestMatchers("/api/auth/register").hasAuthority("ADMIN")
             .requestMatchers(HttpMethod.PUT, "/api/auth/{userId}/deactivate").hasAuthority("ADMIN")
 
