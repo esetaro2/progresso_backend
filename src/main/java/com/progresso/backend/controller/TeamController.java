@@ -104,7 +104,9 @@ public class TeamController {
 
   @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
   @PostMapping
-  public ResponseEntity<TeamDto> createTeam(@RequestParam String teamName) {
+  public ResponseEntity<TeamDto> createTeam(
+      @RequestParam @NotEmpty(message = "Name cannot be empty.")
+      @Size(max = 100, message = "Name cannot exceed 100 characters.") String teamName) {
     TeamDto newTeamDto = teamService.createTeam(teamName);
     return ResponseEntity.status(HttpStatus.CREATED).body(newTeamDto);
   }

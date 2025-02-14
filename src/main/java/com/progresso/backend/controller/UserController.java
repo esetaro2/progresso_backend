@@ -76,12 +76,14 @@ public class UserController {
     return ResponseEntity.ok(usersDto);
   }
 
-  @GetMapping("/teams/{teamId}/users")
+  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
+  @GetMapping("/teams/{teamId}/team-members")
   public ResponseEntity<Page<UserResponseDto>> getUsersByTeamId(
       @PathVariable Long teamId,
+      @RequestParam(required = false) String searchTerm,
       Pageable pageable) {
 
-    Page<UserResponseDto> users = userService.getUsersByTeamId(teamId, pageable);
+    Page<UserResponseDto> users = userService.getUsersByTeamId(teamId, pageable, searchTerm);
 
     return ResponseEntity.ok(users);
   }

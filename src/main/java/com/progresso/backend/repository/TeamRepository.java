@@ -34,7 +34,6 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
       @Param("searchTerm") String searchTerm,
       Pageable pageable);
 
-
   @Query("SELECT t FROM Team t WHERE t.active = true "
       + "AND (SELECT COUNT(tm) FROM t.teamMembers tm WHERE tm.active = true) > :size")
   Page<Team> findByTeamMembersSizeGreaterThan(@Param("size") int size, Pageable pageable);

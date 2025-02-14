@@ -15,6 +15,7 @@ import com.progresso.backend.repository.ProjectRepository;
 import com.progresso.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,6 +47,13 @@ public class CommentService {
     commentDto.setModified(comment.getModified());
     commentDto.setModifiedDate(comment.getModifiedDate());
     commentDto.setDeleted(comment.getDeleted());
+
+    if (comment.getReplies() != null) {
+      List<CommentDto> repliesDto = comment.getReplies().stream()
+          .map(this::convertToDto).toList();
+      commentDto.setReplies(repliesDto);
+    }
+
     return commentDto;
   }
 
@@ -266,6 +274,10 @@ public class CommentService {
     comment.setModified(false);
     comment.setDeleted(false);
 
+    if (comment.getParent() != null && comment.getParent().getDeleted()) {
+      throw new IllegalArgumentException("Cannot reply to a deleted comment");
+    }
+
     if (comment.getParent() != null) {
       comment.getParent().getReplies().add(comment);
       commentRepository.save(comment.getParent());
@@ -282,6 +294,10 @@ public class CommentService {
   public CommentDto updateComment(Long commentId, String newContent) {
     Comment comment = commentRepository.findById(commentId)
         .orElseThrow(() -> new CommentNotFoundException("Comment not found with ID: " + commentId));
+
+    if (comment.getDeleted()) {
+      throw new IllegalArgumentException("Cannot update a deleted comment.");
+    }
 
     comment.setContent(newContent);
     comment.setModified(true);

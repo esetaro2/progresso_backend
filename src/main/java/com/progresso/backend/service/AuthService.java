@@ -51,6 +51,9 @@ public class AuthService {
   }
 
   private String generateUsername(String firstName, String lastName, Role role) {
+    String sanitizedFirstName = firstName.replace(" ", "_");
+    String sanitizedLastName = lastName.replace(" ", "_");
+
     int count = userRepository.countByRole(role);
     String roleInitials = switch (role.toString()) {
       case "ADMIN" -> "am";
@@ -60,7 +63,8 @@ public class AuthService {
     };
 
     return String.format("%s.%s.%s%d@progresso.com",
-        StringUtils.lowerCase(firstName.substring(0, 1)), StringUtils.lowerCase(lastName),
+        StringUtils.lowerCase(sanitizedFirstName.substring(0, 1)),
+        StringUtils.lowerCase(sanitizedLastName),
         roleInitials, count + 1);
   }
 
@@ -75,7 +79,7 @@ public class AuthService {
   @Transactional
   public UserResponseDto registerUser(UserRegistrationDto userRegistrationDto) {
     if (userRepository.findByEmail(userRegistrationDto.getEmail()).isPresent()) {
-      throw new EmailAlreadyExistsException("This email already exists");
+      throw new EmailAlreadyExistsException("This email already exists.");
     }
 
     User user = new User();
@@ -174,4 +178,20 @@ public class AuthService {
 
     return userService.convertToDto(deactivatedUser);
   }
+
+  @Transactional
+  public UserResponseDto activateUser(Long userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+    if (user.getActive()) {
+      throw new UserNotActiveException("User is already active");
+    }
+
+    user.setActive(true);
+    User activatedUser = userRepository.save(user);
+
+    return userService.convertToDto(activatedUser);
+  }
+
 }

@@ -38,7 +38,7 @@ public class SecurityConfig {
         .csrf(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers(HttpMethod.OPTIONS, "/**")
-            .permitAll() // Permetti le richieste OPTIONS per CORS
+            .permitAll()
             .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
             .requestMatchers("/api/projectmanager/**").hasAuthority("PROJECTMANAGER")
             .requestMatchers("/api/teammember/**").hasAuthority("TEAMMEMBER")

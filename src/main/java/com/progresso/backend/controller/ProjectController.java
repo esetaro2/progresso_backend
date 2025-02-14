@@ -32,8 +32,8 @@ public class ProjectController {
   }
 
   @GetMapping("/{projectId}/completion")
-  public ResponseEntity<Integer> getProjectCompletionPercentage(@PathVariable Long projectId) {
-    int percentage = projectService.getProjectCompletionPercentage(projectId);
+  public ResponseEntity<Long> getProjectCompletionPercentage(@PathVariable Long projectId) {
+    long percentage = projectService.getProjectCompletionPercentage(projectId);
     return ResponseEntity.ok(percentage);
   }
 

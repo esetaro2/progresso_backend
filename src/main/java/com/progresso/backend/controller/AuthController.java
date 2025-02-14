@@ -56,4 +56,11 @@ public class AuthController {
     UserResponseDto userResponseDto = authService.deactivateUser(userId);
     return ResponseEntity.ok(userResponseDto);
   }
+
+  @PreAuthorize("hasAuthority('ADMIN')")
+  @PutMapping("/{userId}/activate")
+  public ResponseEntity<UserResponseDto> activateUser(@PathVariable Long userId) {
+    UserResponseDto userResponseDto = authService.activateUser(userId);
+    return ResponseEntity.ok(userResponseDto);
+  }
 }

@@ -77,4 +77,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
       + "AND t.status <> 'CANCELLED'")
   Page<Task> findByStartDateBetween(@Param("startDate") LocalDate startDate,
       @Param("endDate") LocalDate endDate, Pageable pageable);
+
+  @Query("SELECT COUNT(t) > 0 FROM Task t WHERE t.project.id = :projectId AND t.name = :name AND t.status <> 'CANCELLED'")
+  boolean existsByProjectIdAndNameAndStatusNot(@Param("projectId") Long projectId, @Param("name") String name, @Param("status") Status status);
 }

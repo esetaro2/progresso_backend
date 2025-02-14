@@ -151,7 +151,7 @@ public class UserService {
           return true;
         })
         .filter(user -> user.getTeams().stream()
-            .noneMatch(Team::getActive)) // Utente non deve essere in un altro team attivo
+            .noneMatch(Team::getActive))
         .toList();
 
     int start = (int) pageable.getOffset();
@@ -173,6 +173,43 @@ public class UserService {
     return new PageImpl<>(paginatedList, pageable, filteredUsers.size());
   }
 
+  public Page<UserResponseDto> getUsersByTeamId(Long teamId, Pageable pageable, String searchTerm) {
+    teamRepository.findById(teamId)
+        .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
+
+    Page<User> page = userRepository.findUsersByTeamId(teamId, Pageable.unpaged());
+
+    List<User> filteredUsers = page.getContent().stream()
+        .filter(user -> {
+          if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            String[] searchTerms = searchTerm.toLowerCase().trim().split("\\s+");
+            String combinedFields = (user.getFirstName() + " " + user.getLastName() + " "
+                + user.getUsername())
+                .toLowerCase();
+            return Arrays.stream(searchTerms).allMatch(combinedFields::contains);
+          }
+          return true;
+        })
+        .toList();
+
+    int start = (int) pageable.getOffset();
+    int end = Math.min((start + pageable.getPageSize()), filteredUsers.size());
+
+    List<UserResponseDto> paginatedList;
+    if (start <= end) {
+      paginatedList = filteredUsers.subList(start, end).stream()
+          .map(this::convertToDto)
+          .toList();
+    } else {
+      paginatedList = new ArrayList<>();
+    }
+
+    if (paginatedList.isEmpty()) {
+      throw new NoDataFoundException("No users found for team ID: " + teamId);
+    }
+
+    return new PageImpl<>(paginatedList, pageable, filteredUsers.size());
+  }
 
   public Page<UserResponseDto> getUsersByRole(String role, Pageable pageable) {
     Role roleEnum = EnumUtils.getEnum(Role.class, role.toUpperCase());
@@ -207,19 +244,6 @@ public class UserService {
     }
 
     return usersDto;
-  }
-
-  public Page<UserResponseDto> getUsersByTeamId(Long teamId, Pageable pageable) {
-    teamRepository.findById(teamId)
-        .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
-
-    Page<User> users = userRepository.findUsersByTeamId(teamId, pageable);
-
-    if (users.isEmpty()) {
-      throw new NoDataFoundException("No users found for team ID: " + teamId);
-    }
-
-    return users.map(this::convertToDto);
   }
 
   public Page<UserResponseDto> getUsersByProjectId(Long projectId, Pageable pageable) {

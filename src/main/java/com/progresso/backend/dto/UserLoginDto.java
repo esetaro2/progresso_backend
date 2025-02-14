@@ -10,12 +10,11 @@ public class UserLoginDto {
 
   @NotEmpty(message = "Username cannot be empty.")
   @Pattern(
-      regexp = "^[a-zA-Z]\\.[a-zA-Z]+\\.(am|pm|tm)[0-9]+@progresso\\.com$",
+      regexp = "^[a-zA-Z]\\.[a-zA-Z_]+\\.(am|pm|tm)[0-9]+@progresso\\.com$",
       message = "Username must follow the format: "
-          + "fnameFirstInitial.lname.roleOccurency@progresso.com"
+          + "firstInitial.lastname(_if_composed).roleOccurrence@progresso.com"
   )
   private String username;
-
 
   @NotEmpty(message = "Password cannot be empty.")
   @Size(min = 8, message = "The password must be at least 8 characters long.")

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -163,8 +164,9 @@ public class TaskController {
   @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
       + "and @projectService.isManagerOfProject(#taskDto.projectId, authentication.name))")
   @PostMapping
-  public ResponseEntity<TaskDto> createTask(@Valid @RequestBody TaskDto taskDto) {
-    TaskDto createdTask = taskService.createTask(taskDto);
+  public ResponseEntity<TaskDto> createAndAssignTask(@Valid @RequestBody TaskDto taskDto,
+      @RequestParam Long userId) {
+    TaskDto createdTask = taskService.createAndAssignTask(taskDto, userId);
     return ResponseEntity.status(HttpStatus.CREATED).body(createdTask);
   }
 

@@ -19,21 +19,21 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
   @ExceptionHandler(UserNotFoundException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ResponseStatus(HttpStatus.NOT_FOUND)
   public ResponseEntity<String> handleUserNotFoundException(final UserNotFoundException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
   }
 
   @ExceptionHandler(CommentNotFoundException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ResponseStatus(HttpStatus.NOT_FOUND)
   public ResponseEntity<String> handleCommentNotFoundException(final CommentNotFoundException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
   }
 
   @ExceptionHandler(UserNotActiveException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ResponseStatus(HttpStatus.FORBIDDEN)
   public ResponseEntity<String> handleUserNotActiveException(final UserNotActiveException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
   }
 
   @ExceptionHandler(ActiveTasksException.class)
@@ -49,63 +49,45 @@ public class GlobalExceptionHandler {
   }
 
   @ExceptionHandler(NoDataFoundException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ResponseStatus(HttpStatus.NOT_FOUND)
   public ResponseEntity<String> handleNoDataFoundException(final NoDataFoundException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
   }
 
   @ExceptionHandler(TeamNotFoundException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ResponseStatus(HttpStatus.NOT_FOUND)
   public ResponseEntity<String> handleTeamNotFoundException(final TeamNotFoundException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-  }
-
-  @ExceptionHandler(TeamNameAlreadyExistsException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<String> handleTeamNameAlreadyExistsException(
-      final TeamNameAlreadyExistsException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
   }
 
   @ExceptionHandler(InvalidRoleException.class)
-  @ResponseStatus(HttpStatus.UNAUTHORIZED)
+  @ResponseStatus(HttpStatus.FORBIDDEN)
   public ResponseEntity<String> handleInvalidRoleException(final InvalidRoleException e) {
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
   }
 
   @ExceptionHandler(TaskNotFoundException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<String> handleTaskNotFoundException(
-      final TaskNotFoundException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-  }
-
-  @ExceptionHandler(TaskNameAlreadyExistsException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<String> handleTaskNameAlreadyExistsException(
-      final TaskNameAlreadyExistsException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  public ResponseEntity<String> handleTaskNotFoundException(final TaskNotFoundException e) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
   }
 
   @ExceptionHandler(AccessDeniedException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<String> handleAccessDeniedException(
-      final AccessDeniedException e) {
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage() + " for this user.");
+  @ResponseStatus(HttpStatus.FORBIDDEN)
+  public ResponseEntity<String> handleAccessDeniedException(final AccessDeniedException e) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage() + " for this user.");
   }
 
   @ExceptionHandler(DateTimeParseException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<String> handleDateTimeParseException(
-      final DateTimeParseException e) {
+  public ResponseEntity<String> handleDateTimeParseException(final DateTimeParseException e) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
   }
 
   @ExceptionHandler(ProjectNotFoundException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<String> handleProjectNotFoundException(
-      final ProjectNotFoundException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  public ResponseEntity<String> handleProjectNotFoundException(final ProjectNotFoundException e) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
   }
 
   @ExceptionHandler(InvalidPasswordException.class)
@@ -143,15 +125,13 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(IllegalStateException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<String> handleIllegalStateException(
-      IllegalStateException ex) {
+  public ResponseEntity<String> handleIllegalStateException(IllegalStateException ex) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<String> handleIllegalArgumentException(
-      IllegalArgumentException ex) {
+  public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException ex) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
   }
 

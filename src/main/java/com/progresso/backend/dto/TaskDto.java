@@ -39,5 +39,5 @@ public class TaskDto {
   @NotNull(message = "Project ID cannot be null")
   private Long projectId;
 
-  private Long assignedUserId;
+  private String assignedUserUsername;
 }
