@@ -1,6 +1,6 @@
 package com.progresso.backend.dto;
 
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
@@ -16,7 +16,7 @@ public class CommentDto {
 
   private Long id;
 
-  @NotEmpty(message = "Content cannot be empty")
+  @NotBlank(message = "Content cannot be empty")
   @Size(max = 500, message = "Content must be between 1 and 500 characters")
   private String content;
 

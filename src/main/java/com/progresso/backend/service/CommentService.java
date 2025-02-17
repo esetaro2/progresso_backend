@@ -63,6 +63,10 @@ public class CommentService {
   }
 
   public Boolean isManagerOrMemberOfProject(Long projectId, String username) {
+    if (projectId == null) {
+      throw new ProjectNotFoundException("Project id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 
@@ -72,6 +76,10 @@ public class CommentService {
   }
 
   public Boolean isCommentOwner(Long commentId, String username) {
+    if (commentId == null) {
+      throw new IllegalArgumentException("Comment id cannot be null");
+    }
+
     Comment comment = commentRepository.findById(commentId)
         .orElseThrow(() -> new CommentNotFoundException("Comment not found with ID: " + commentId));
 
@@ -79,6 +87,10 @@ public class CommentService {
   }
 
   public CommentDto getCommentById(Long id) {
+    if (id == null) {
+      throw new IllegalArgumentException("Comment id cannot be null");
+    }
+
     Comment comment = commentRepository.findById(id)
         .orElseThrow(() -> new CommentNotFoundException("Comment not found with ID: " + id));
 
@@ -86,6 +98,10 @@ public class CommentService {
   }
 
   public Page<CommentDto> findByProjectIdAndParentIsNull(Long projectId, Pageable pageable) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 
@@ -99,6 +115,10 @@ public class CommentService {
   }
 
   public Page<CommentDto> findByParentId(Long parentId, Pageable pageable) {
+    if (parentId == null) {
+      throw new IllegalArgumentException("Parent id cannot be null");
+    }
+
     commentRepository.findById(parentId)
         .orElseThrow(() -> new CommentNotFoundException("Comment not found with ID: " + parentId));
 
@@ -112,6 +132,10 @@ public class CommentService {
   }
 
   public Page<CommentDto> findByProjectId(Long projectId, Pageable pageable) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 
@@ -125,6 +149,10 @@ public class CommentService {
   }
 
   public Page<CommentDto> findByUserId(Long userId, Pageable pageable) {
+    if (userId == null) {
+      throw new IllegalArgumentException("User id cannot be null");
+    }
+
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
@@ -139,6 +167,10 @@ public class CommentService {
 
   public Page<CommentDto> findByProjectIdAndContentContaining(Long projectId, String content,
       Pageable pageable) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 
@@ -154,6 +186,10 @@ public class CommentService {
   }
 
   public Page<CommentDto> findRootCommentsByProjectId(Long projectId, Pageable pageable) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 
@@ -167,6 +203,10 @@ public class CommentService {
   }
 
   public Page<CommentDto> findRepliesByParentId(Long parentId, Pageable pageable) {
+    if (parentId == null) {
+      throw new IllegalArgumentException("Parent id cannot be null");
+    }
+
     commentRepository.findById(parentId)
         .orElseThrow(() -> new CommentNotFoundException("Comment not found with ID: " + parentId));
 
@@ -181,6 +221,14 @@ public class CommentService {
 
   public Page<CommentDto> findCommentsByUserIdAndProjectId(Long projectId, Long userId,
       Pageable pageable) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
+    if (userId == null) {
+      throw new IllegalArgumentException("User id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 
@@ -199,6 +247,10 @@ public class CommentService {
   }
 
   public Page<CommentDto> findActiveCommentsByProjectId(Long projectId, Pageable pageable) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 
@@ -212,6 +264,10 @@ public class CommentService {
   }
 
   public Page<CommentDto> findActiveCommentsByUserId(Long userId, Pageable pageable) {
+    if (userId == null) {
+      throw new IllegalArgumentException("User id cannot be null");
+    }
+
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
@@ -226,6 +282,10 @@ public class CommentService {
 
   public Page<CommentDto> findActiveCommentsByProjectIdAndContentContaining(Long projectId,
       String content, Pageable pageable) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 
@@ -292,6 +352,10 @@ public class CommentService {
 
   @Transactional
   public CommentDto updateComment(Long commentId, String newContent) {
+    if (commentId == null) {
+      throw new IllegalArgumentException("Comment id cannot be null");
+    }
+
     Comment comment = commentRepository.findById(commentId)
         .orElseThrow(() -> new CommentNotFoundException("Comment not found with ID: " + commentId));
 
@@ -310,6 +374,10 @@ public class CommentService {
 
   @Transactional
   public CommentDto deleteComment(Long commentId) {
+    if (commentId == null) {
+      throw new IllegalArgumentException("Comment id cannot be null");
+    }
+
     Comment comment = commentRepository.findById(commentId)
         .orElseThrow(() -> new CommentNotFoundException("Comment not found with ID: " + commentId));
 
