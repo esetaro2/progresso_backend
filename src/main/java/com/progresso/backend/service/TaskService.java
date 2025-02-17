@@ -18,7 +18,6 @@ import com.progresso.backend.repository.TaskRepository;
 import com.progresso.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
-import org.apache.commons.lang3.EnumUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -56,118 +55,47 @@ public class TaskService {
   }
 
   public Long getProjectIdByTaskId(Long taskId) {
+    if (taskId == null) {
+      throw new IllegalArgumentException("Task id cannot be null");
+    }
+
     return taskRepository.findById(taskId)
         .map(task -> task.getProject().getId())
-        .orElseThrow(() -> new TaskNotFoundException("Task not found"));
+        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
   }
 
   public TaskDto findById(Long taskId) {
+    if (taskId == null) {
+      throw new IllegalArgumentException("Task id cannot be null");
+    }
+
     Task task = taskRepository.findById(taskId)
         .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
 
     return convertToDto(task);
   }
 
-  public Page<TaskDto> findByStatus(Status status, Pageable pageable) {
-    Page<Task> tasks = taskRepository.findByStatus(status, pageable);
-    if (tasks.isEmpty()) {
-      throw new NoDataFoundException("No tasks found with status: " + status);
-    }
-    return tasks.map(this::convertToDto);
-  }
-
-  public Page<TaskDto> findByPriority(String priority, Pageable pageable) {
-    if (!EnumUtils.isValidEnum(com.progresso.backend.enumeration.Priority.class, priority)) {
-      throw new IllegalArgumentException("Invalid priority: " + priority);
-    }
-    Page<Task> tasks = taskRepository.findByPriority(
-        com.progresso.backend.enumeration.Priority.valueOf(priority), pageable);
-    if (tasks.isEmpty()) {
-      throw new NoDataFoundException("No tasks found with priority: " + priority);
-    }
-    return tasks.map(this::convertToDto);
-  }
-
-  public Page<TaskDto> findByDueDateBefore(LocalDate dueDate, Pageable pageable) {
-    Page<Task> tasks = taskRepository.findByDueDateBefore(dueDate, pageable);
-    if (tasks.isEmpty()) {
-      throw new NoDataFoundException("No tasks found with due date before: " + dueDate);
-    }
-    return tasks.map(this::convertToDto);
-  }
-
-  public Page<TaskDto> findByCompletionDateAfter(LocalDate completionDate, Pageable pageable) {
-    Page<Task> tasks = taskRepository.findByCompletionDateAfter(completionDate, pageable);
-    if (tasks.isEmpty()) {
-      throw new NoDataFoundException("No tasks found completed after: " + completionDate);
-    }
-    return tasks.map(this::convertToDto);
-  }
-
   public Page<TaskDto> findByProjectId(Long projectId, Pageable pageable) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
     projectRepository.findById(projectId)
         .orElseThrow(() -> new IllegalArgumentException("Project not found with ID: " + projectId));
+
     Page<Task> tasks = taskRepository.findByProjectId(projectId, pageable);
+
     if (tasks.isEmpty()) {
       throw new NoDataFoundException("No tasks found for project with ID: " + projectId);
     }
     return tasks.map(this::convertToDto);
   }
 
-  public Page<TaskDto> findByProjectIdAndStatus(Long projectId, Status status, Pageable pageable) {
-    projectRepository.findById(projectId)
-        .orElseThrow(() -> new IllegalArgumentException("Project not found with ID: " + projectId));
-    Page<Task> tasks = taskRepository.findByProjectIdAndStatus(projectId, status, pageable);
-    if (tasks.isEmpty()) {
-      throw new NoDataFoundException(
-          "No tasks found for project with ID " + projectId + " and status: " + status);
-    }
-    return tasks.map(this::convertToDto);
-  }
-
-  public Page<TaskDto> findByNameAndProjectId(String name, Long projectId, Pageable pageable) {
-    projectRepository.findById(projectId)
-        .orElseThrow(() -> new IllegalArgumentException("Project not found with ID: " + projectId));
-    Page<Task> tasks = taskRepository.findByNameAndProjectId(name, projectId, pageable);
-    if (tasks.isEmpty()) {
-      throw new NoDataFoundException(
-          "No tasks found with name containing: " + name + " for project with ID: " + projectId);
-    }
-    return tasks.map(this::convertToDto);
-  }
-
-  public Page<TaskDto> findCompletedTasksByProjectId(Long projectId, Pageable pageable) {
-    projectRepository.findById(projectId)
-        .orElseThrow(() -> new IllegalArgumentException("Project not found with ID: " + projectId));
-    Page<Task> tasks = taskRepository.findCompletedTasksByProjectId(projectId, pageable);
-    if (tasks.isEmpty()) {
-      throw new NoDataFoundException("No completed tasks found for project with ID: " + projectId);
-    }
-    return tasks.map(this::convertToDto);
-  }
-
-  public Page<TaskDto> findTasksByUserAndStatus(Long userId, Status status, Pageable pageable) {
-    userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
-    Page<Task> tasks = taskRepository.findByAssignedUserIdAndStatus(userId, status, pageable);
-    if (tasks.isEmpty()) {
-      throw new NoDataFoundException(
-          "No tasks found for user with ID: " + userId + " and status: " + status);
-    }
-    return tasks.map(this::convertToDto);
-  }
-
-  public Page<TaskDto> findOverdueTasksByUser(Long userId, Pageable pageable) {
-    userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
-    Page<Task> tasks = taskRepository.findOverdueTasksByUserId(userId, pageable);
-    if (tasks.isEmpty()) {
-      throw new NoDataFoundException("No overdue tasks found for user with ID: " + userId);
-    }
-    return tasks.map(this::convertToDto);
-  }
-
   public Page<TaskDto> findTasksByUser(Long userId, Pageable pageable) {
+    if (userId == null) {
+      throw new IllegalArgumentException("User id cannot be null");
+    }
+
     userRepository.findById(userId)
         .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
     Page<Task> tasks = taskRepository.findByAssignedUserId(userId, pageable);
@@ -177,88 +105,12 @@ public class TaskService {
     return tasks.map(this::convertToDto);
   }
 
-  public Page<TaskDto> getTasksByAssignedUserIdAndCompletionDateBefore(Long userId,
-      LocalDate completionDate, Pageable pageable) {
-    if (completionDate == null) {
-      throw new IllegalArgumentException("Completion date cannot be null");
-    }
-
-    userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
-
-    Page<Task> tasks = taskRepository.findByAssignedUserIdAndCompletionDateBefore(userId,
-        completionDate, pageable);
-
-    if (tasks.isEmpty()) {
-      throw new NoDataFoundException(
-          "No tasks found for user ID: " + userId + " with completion date before "
-              + completionDate);
-    }
-
-    return tasks.map(this::convertToDto);
-  }
-
-  public Page<TaskDto> getTasksByAssignedUserIdAndStartDateAfter(Long userId, LocalDate startDate,
-      Pageable pageable) {
-    if (startDate == null) {
-      throw new IllegalArgumentException("Start date cannot be null");
-    }
-
-    userRepository.findById(userId)
-        .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
-
-    Page<Task> tasks = taskRepository.findByAssignedUserIdAndStartDateAfter(userId, startDate,
-        pageable);
-
-    if (tasks.isEmpty()) {
-      throw new IllegalStateException(
-          "No tasks found for user ID: " + userId + " starting after " + startDate);
-    }
-
-    return tasks.map(this::convertToDto);
-  }
-
-  public Page<TaskDto> getTasksByProjectIdAndCompletionDateBefore(Long projectId,
-      LocalDate completionDate, Pageable pageable) {
-    if (completionDate == null) {
-      throw new IllegalArgumentException("Completion date cannot be null");
-    }
-
-    projectRepository.findById(projectId)
-        .orElseThrow(() -> new IllegalArgumentException("Project not found with ID: " + projectId));
-
-    Page<Task> tasks = taskRepository.findByProjectIdAndCompletionDateBefore(projectId,
-        completionDate, pageable);
-
-    if (tasks.isEmpty()) {
-      throw new IllegalStateException(
-          "No tasks found for project ID: " + projectId + " with completion date before "
-              + completionDate);
-    }
-
-    return tasks.map(this::convertToDto);
-  }
-
-  public Page<TaskDto> getTasksByStartDateBetween(LocalDate startDate, LocalDate endDate,
-      Pageable pageable) {
-    if (startDate == null || endDate == null) {
-      throw new IllegalArgumentException("Start date and end date cannot be null");
-    }
-    if (startDate.isAfter(endDate)) {
-      throw new IllegalArgumentException("Start date cannot be after end date");
-    }
-
-    Page<Task> tasks = taskRepository.findByStartDateBetween(startDate, endDate, pageable);
-
-    if (tasks.isEmpty()) {
-      throw new IllegalStateException("No tasks found between " + startDate + " and " + endDate);
-    }
-
-    return tasks.map(this::convertToDto);
-  }
-
   @Transactional
   public TaskDto createAndAssignTask(TaskDto taskDto, Long userId) {
+    if (userId == null) {
+      throw new IllegalArgumentException("User id cannot be null");
+    }
+
     Project project = projectRepository.findById(taskDto.getProjectId())
         .orElseThrow(() -> new ProjectNotFoundException(
             "Project not found with ID: " + taskDto.getProjectId()));
@@ -340,6 +192,10 @@ public class TaskService {
 
   @Transactional
   public TaskDto updateTask(Long taskId, TaskDto taskDto) {
+    if (taskId == null) {
+      throw new IllegalArgumentException("Task id cannot be null");
+    }
+
     if (taskDto.getStartDate().isBefore(LocalDate.now()) || taskDto.getDueDate()
         .isBefore(LocalDate.now())) {
       throw new IllegalArgumentException(
@@ -410,47 +266,15 @@ public class TaskService {
   }
 
   @Transactional
-  public TaskDto assignTaskToTeamMember(Long taskId, Long userId) {
-    Task task = taskRepository.findById(taskId)
-        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
-
-    if (!user.getActive()) {
-      throw new UserNotActiveException("User " + user.getUsername() + " is not active");
-    }
-
-    if (!user.getRole().equals(Role.TEAMMEMBER)) {
-      throw new InvalidRoleException("This user is not a team member: " + user.getUsername());
-    }
-
-    if (!task.getProject().getTeam().getTeamMembers().contains(user)) {
-      throw new IllegalArgumentException(
-          "User " + user.getUsername() + " not found in this team");
-    }
-
-    if (task.getAssignedUser() != null) {
-      throw new IllegalStateException(
-          "Task is already assigned to user: " + task.getAssignedUser().getUsername());
-    }
-
-    if (!task.getProject().getStatus().equals(Status.IN_PROGRESS)) {
-      task.getProject().setStatus(Status.IN_PROGRESS);
-      projectRepository.save(task.getProject());
-    }
-
-    task.setAssignedUser(user);
-    task.setStatus(Status.IN_PROGRESS);
-    taskRepository.save(task);
-
-    user.getAssignedTasks().add(task);
-    userRepository.save(user);
-
-    return convertToDto(task);
-  }
-
-  @Transactional
   public TaskDto reassignTaskToTeamMember(Long taskId, Long userId) {
+    if (taskId == null) {
+      throw new IllegalArgumentException("Task id cannot be null");
+    }
+
+    if (userId == null) {
+      throw new IllegalArgumentException("User id cannot be null");
+    }
+
     Task task = taskRepository.findById(taskId)
         .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
 
@@ -493,6 +317,10 @@ public class TaskService {
 
   @Transactional
   public TaskDto completeTask(Long taskId) {
+    if (taskId == null) {
+      throw new IllegalArgumentException("Task id cannot be null");
+    }
+
     Task task = taskRepository.findById(taskId)
         .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
 
@@ -520,6 +348,14 @@ public class TaskService {
 
   @Transactional
   public void removeTaskFromProject(Long projectId, Long taskId) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
+    if (taskId == null) {
+      throw new IllegalArgumentException("Task id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(
             () -> new ProjectNotFoundException("Project not found with ID: " + projectId));
