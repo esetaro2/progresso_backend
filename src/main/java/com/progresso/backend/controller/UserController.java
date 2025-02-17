@@ -76,7 +76,8 @@ public class UserController {
     return ResponseEntity.ok(usersDto);
   }
 
-  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
+  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
+      + "and @teamService.isProjectManagerOfTeamProjects(#teamId, authentication.name))")
   @GetMapping("/teams/{teamId}/team-members")
   public ResponseEntity<Page<UserResponseDto>> getUsersByTeamId(
       @PathVariable Long teamId,

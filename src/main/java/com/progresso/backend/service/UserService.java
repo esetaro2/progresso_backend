@@ -1,11 +1,12 @@
 package com.progresso.backend.service;
 
-import com.progresso.backend.dto.LoginResponseDto;
+import com.progresso.backend.dto.UserLoginResponseDto;
 import com.progresso.backend.dto.UserResponseDto;
 import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.exception.InvalidRoleException;
 import com.progresso.backend.exception.NoDataFoundException;
+import com.progresso.backend.exception.ProjectNotFoundException;
 import com.progresso.backend.exception.TeamNotFoundException;
 import com.progresso.backend.exception.UserNotFoundException;
 import com.progresso.backend.model.Comment;
@@ -64,11 +65,11 @@ public class UserService {
     return dto;
   }
 
-  public LoginResponseDto convertToDtoToken(User user, String token) {
-    LoginResponseDto loginResponseDto = new LoginResponseDto();
-    loginResponseDto.setToken(token);
-    loginResponseDto.setUserResponseDto(convertToDtoCommon(user));
-    return loginResponseDto;
+  public UserLoginResponseDto convertToDtoToken(User user, String token) {
+    UserLoginResponseDto userLoginResponseDto = new UserLoginResponseDto();
+    userLoginResponseDto.setToken(token);
+    userLoginResponseDto.setUserResponseDto(convertToDtoCommon(user));
+    return userLoginResponseDto;
   }
 
   public UserResponseDto convertToDto(User user) {
@@ -76,8 +77,12 @@ public class UserService {
   }
 
   public UserResponseDto getUserById(Long id) {
-    return convertToDto(userRepository.findById(id)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + id)));
+    if (id == null) {
+      throw new IllegalArgumentException("Id cannot be null");
+    } else {
+      return convertToDto(userRepository.findById(id)
+          .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + id)));
+    }
   }
 
   public Page<UserResponseDto> getAllUsers(Pageable pageable) {
@@ -174,6 +179,10 @@ public class UserService {
   }
 
   public Page<UserResponseDto> getUsersByTeamId(Long teamId, Pageable pageable, String searchTerm) {
+    if (teamId == null) {
+      throw new IllegalArgumentException("Team ID cannot be null.");
+    }
+
     teamRepository.findById(teamId)
         .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
 
@@ -212,6 +221,10 @@ public class UserService {
   }
 
   public Page<UserResponseDto> getUsersByRole(String role, Pageable pageable) {
+    if (role == null) {
+      throw new IllegalArgumentException("Role cannot be null.");
+    }
+
     Role roleEnum = EnumUtils.getEnum(Role.class, role.toUpperCase());
 
     if (roleEnum == null) {
@@ -231,7 +244,8 @@ public class UserService {
   public Page<UserResponseDto> getUsersByFirstNameOrLastNameOrUserName(
       String firstName, String lastName, String username, Pageable pageable) {
     if (StringUtils.isAllEmpty(firstName, lastName, username)) {
-      throw new IllegalArgumentException("At least one parameter is required");
+      throw new IllegalArgumentException(
+          "At least one of the parameters (firstName, lastName, username) is required.");
     }
 
     Page<UserResponseDto> usersDto = userRepository
@@ -239,14 +253,21 @@ public class UserService {
             lastName,
             username, pageable).map(this::convertToDtoCommon);
 
-    if (!usersDto.hasContent()) {
-      throw new NoDataFoundException("No users found for username " + username);
+    if (usersDto.isEmpty()) {
+      throw new NoDataFoundException("No users found for the given search criteria.");
     }
 
     return usersDto;
   }
 
   public Page<UserResponseDto> getUsersByProjectId(Long projectId, Pageable pageable) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project ID cannot be null.");
+    }
+
+    projectRepository.findById(projectId)
+        .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
+
     Page<User> users = userRepository.findUsersByProjectId(projectId, pageable);
 
     if (users.isEmpty()) {
@@ -257,13 +278,24 @@ public class UserService {
   }
 
   public UserResponseDto getUserFromTeam(Long teamId, Long userId) {
+    if (teamId == null) {
+      throw new IllegalArgumentException("Team ID cannot be null.");
+    }
+
+    if (userId == null) {
+      throw new IllegalArgumentException("User ID cannot be null.");
+    }
+
     teamRepository.findById(teamId)
         .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
+
     User user = userRepository.findUserInTeam(teamId, userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+        .orElseThrow(() -> new UserNotFoundException(
+            "User with ID: " + userId + " not found in team with ID: " + teamId));
 
     return convertToDto(user);
   }
+
 
   public Page<UserResponseDto> findByActiveTrue(Pageable pageable) {
     Page<User> users = userRepository.findByActiveTrue(pageable);
