@@ -1,6 +1,6 @@
 package com.progresso.backend.service;
 
-import com.progresso.backend.dto.LoginResponseDto;
+import com.progresso.backend.dto.UserLoginResponseDto;
 import com.progresso.backend.dto.UserLoginDto;
 import com.progresso.backend.dto.UserRegistrationDto;
 import com.progresso.backend.dto.UserResponseDto;
@@ -104,7 +104,7 @@ public class AuthService {
     return userService.convertToDto(user);
   }
 
-  public LoginResponseDto authenticateUser(UserLoginDto loginDto) {
+  public UserLoginResponseDto authenticateUser(UserLoginDto loginDto) {
     User user = userRepository.findByUsername(loginDto.getUsername())
         .orElseThrow(() -> new UserNotFoundException(
             "User not found with username: " + loginDto.getUsername()));

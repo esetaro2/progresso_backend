@@ -44,52 +44,94 @@ public class SecurityConfig {
             .requestMatchers("/api/teammember/**").hasAuthority("TEAMMEMBER")
 
             // AUTH
-            .requestMatchers("/api/auth/login").permitAll()
-            .requestMatchers("/api/auth/register").hasAuthority("ADMIN")
+            .requestMatchers(HttpMethod.POST, "/api/auth/register").hasAuthority("ADMIN")
             .requestMatchers(HttpMethod.PUT, "/api/auth/{userId}/deactivate").hasAuthority("ADMIN")
+            .requestMatchers(HttpMethod.PUT, "/api/auth/{userId}/activate").hasAuthority("ADMIN")
+
+            //USER
+            .requestMatchers(HttpMethod.GET, "/api/users").hasAuthority("ADMIN")
+            .requestMatchers(HttpMethod.GET, "/api/users/available-project-managers")
+            .hasAuthority("ADMIN")
+            .requestMatchers(HttpMethod.GET, "/api/users/available-team-members")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+            .requestMatchers(HttpMethod.GET, "/api/users/role/{roleName}").hasAuthority("ADMIN")
+            .requestMatchers(HttpMethod.GET, "/api/users/search").hasAuthority("ADMIN")
+            .requestMatchers(HttpMethod.GET, "/api/users/teams/{teamId}/team-members")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
 
             // TEAM
+            .requestMatchers(HttpMethod.GET, "/api/teams").hasAuthority("ADMIN")
+            .requestMatchers(HttpMethod.GET, "/api/teams/availableTeams")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+
             .requestMatchers(HttpMethod.POST, "/api/teams")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+
             .requestMatchers(HttpMethod.PUT, "/api/teams/{teamId}")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
-            .requestMatchers(HttpMethod.POST, "/api/teams/{teamId}/add-member/{userId}")
+
+            .requestMatchers(HttpMethod.POST, "/api/teams/{teamId}/members")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
-            .requestMatchers(HttpMethod.DELETE, "/api/teams/{teamId}/remove-member/{userId}")
+            .requestMatchers(HttpMethod.POST, "/api/teams/{teamId}/remove-members")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+
             .requestMatchers(HttpMethod.DELETE, "/api/teams/{teamId}").hasAuthority("ADMIN")
 
             // TASK
+            .requestMatchers(HttpMethod.GET, "/api/tasks/project/{projectId}")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER", "TEAMMEMBER")
+
             .requestMatchers(HttpMethod.POST, "/api/tasks")
-            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
-            .requestMatchers(HttpMethod.PUT, "/api/tasks/{taskId}")
-            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
-            .requestMatchers(HttpMethod.PATCH, "/api/tasks/{taskId}/complete")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
             .requestMatchers(HttpMethod.POST, "/api/tasks/{taskId}/assign/{userId}")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
             .requestMatchers(HttpMethod.POST, "/api/tasks/{taskId}/reassign/{userId}")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
-            .requestMatchers(HttpMethod.POST, "/api/tasks/project/{projectId}/task/{taskId}")
+
+            .requestMatchers(HttpMethod.PUT, "/api/tasks/{taskId}")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+
+            .requestMatchers(HttpMethod.PATCH, "/api/tasks/{taskId}/complete")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+
             .requestMatchers(HttpMethod.DELETE, "/api/tasks/project/{projectId}/task/{taskId}")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
 
             // PROJECT
-            .requestMatchers(HttpMethod.POST, "/api/projects")
+            .requestMatchers(HttpMethod.GET, "/api/projects/{projectId}/completion")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER", "TEAMMEMBER")
+
+            .requestMatchers(HttpMethod.GET, "/api/projects").hasAuthority("ADMIN")
+
+            .requestMatchers(HttpMethod.GET, "/api/projects/manager/{managerUsername}")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+            .requestMatchers(HttpMethod.GET, "/api/projects/teamMember/{teamMemberUsername}")
+            .hasAnyAuthority("ADMIN", "TEAMMEMBER")
+            .requestMatchers(HttpMethod.GET, "/api/projects/{id}")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER", "TEAMMEMBER")
+
+            .requestMatchers(HttpMethod.POST, "/api/projects").hasAuthority("ADMIN")
+
             .requestMatchers(HttpMethod.PUT, "/api/projects/{projectId}")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
             .requestMatchers(HttpMethod.PUT, "/api/projects/{projectId}/remove")
-            .hasAuthority("ADMIN")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
             .requestMatchers(HttpMethod.PUT,
                 "/api/projects/{projectId}/update-manager/{projectManagerId}").hasAuthority("ADMIN")
+
             .requestMatchers(HttpMethod.PUT, "/api/projects/{projectId}/assign-team/{teamId}")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
             .requestMatchers(HttpMethod.PUT, "/api/projects/{projectId}/reassign-team/{teamId}")
-            .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+            .hasAuthority("ADMIN")
             .requestMatchers(HttpMethod.PUT, "/api/projects/{projectId}/complete")
             .hasAnyAuthority("ADMIN", "PROJECTMANAGER")
+
+            // COMMENT
+            .requestMatchers(HttpMethod.POST, "/api/comments")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER", "TEAMMEMBER")
+
+            .requestMatchers(HttpMethod.DELETE, "/api/comments/{id}")
+            .hasAnyAuthority("ADMIN", "PROJECTMANAGER", "TEAMMEMBER")
 
             .anyRequest().authenticated())
         .cors(withDefaults());
