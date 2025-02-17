@@ -88,7 +88,23 @@ public class ProjectService {
     return priority;
   }
 
+  public boolean isTeamMemberOfProject(Long projectId, String username) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
+    Project project = projectRepository.findById(projectId)
+        .orElseThrow(() -> new ProjectNotFoundException("Project not found"));
+
+    return project.getTeam() != null && project.getTeam().getTeamMembers().stream()
+        .anyMatch(user -> user.getUsername().equals(username));
+  }
+
   public boolean isManagerOfProject(Long projectId, String username) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found"));
     User projectManager = project.getProjectManager();
@@ -97,6 +113,10 @@ public class ProjectService {
   }
 
   public long getProjectCompletionPercentage(Long projectId) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found"));
 
@@ -148,6 +168,10 @@ public class ProjectService {
 
   public Page<ProjectDto> findProjectsByProjectManagerUsernameAndFilters(String managerUsername,
       String status, String priority, String name, Pageable pageable) {
+    if (managerUsername == null || managerUsername.isEmpty()) {
+      throw new IllegalArgumentException("Manager username cannot be null");
+    }
+
     User projectManager = userRepository.findByUsername(managerUsername)
         .orElseThrow(() -> new UserNotFoundException(
             "Project Manager not found with username: " + managerUsername));
@@ -186,6 +210,10 @@ public class ProjectService {
   public Page<ProjectDto> findProjectsByTeamMemberUsernameAndFilters(String teamMemberUsername,
       String status, String priority, String name, Pageable pageable) {
 
+    if (teamMemberUsername == null || teamMemberUsername.isEmpty()) {
+      throw new IllegalArgumentException("Team member username cannot be null");
+    }
+
     Status statusEnum = (status != null && EnumUtils.isValidEnum(Status.class, status))
         ? Status.valueOf(status)
         : null;
@@ -213,61 +241,24 @@ public class ProjectService {
   }
 
   public ProjectDto findProjectById(Long id) {
+    if (id == null) {
+      throw new IllegalArgumentException("Id cannot be null");
+    }
+
     Project project = projectRepository.findById(id)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + id));
+
     project.setPriority(updateProjectPriority(project));
     projectRepository.save(project);
+
     return convertToDto(project);
   }
 
-  public Page<ProjectDto> findActiveByProjectManager(Long managerId, Pageable pageable) {
-    User manager = userRepository.findById(managerId)
-        .orElseThrow(
-            () -> new UserNotFoundException("User with ID " + managerId + " not found."));
-
-    if (!manager.getRole().equals(Role.PROJECTMANAGER)) {
-      throw new IllegalStateException("User with ID " + managerId + " is not a project manager.");
-    }
-
-    Page<Project> projectsPage = projectRepository.findActiveByProjectManager(managerId, pageable);
-
-    projectsPage.getContent().stream().filter(
-            project -> !project.getStatus().equals(Status.CANCELLED) && !project.getStatus()
-                .equals(Status.COMPLETED))
-        .forEach(project -> project.setPriority(updateProjectPriority(project)));
-
-    Page<ProjectDto> page = projectsPage.map(this::convertToDto);
-
-    if (page.isEmpty()) {
-      throw new NoDataFoundException("No active projects found for the given project manager.");
-    }
-
-    return page;
-  }
-
-  public Page<ProjectDto> findByTaskStatus(String taskStatus, Pageable pageable) {
-    if (!EnumUtils.isValidEnum(Status.class, taskStatus)) {
-      throw new IllegalArgumentException("Invalid task status: " + taskStatus);
-    }
-
-    Page<Project> projectsPage = projectRepository.findByTaskStatus(Status.valueOf(taskStatus),
-        pageable);
-
-    projectsPage.getContent().stream().filter(
-            project -> !project.getStatus().equals(Status.CANCELLED) && !project.getStatus()
-                .equals(Status.COMPLETED))
-        .forEach(project -> project.setPriority(updateProjectPriority(project)));
-
-    Page<ProjectDto> page = projectsPage.map(this::convertToDto);
-
-    if (page.isEmpty()) {
-      throw new NoDataFoundException("No projects found for the given task status.");
-    }
-
-    return page;
-  }
-
   public Page<ProjectDto> findByTeamId(Long teamId, Pageable pageable) {
+    if (teamId == null) {
+      throw new IllegalArgumentException("Team id cannot be null");
+    }
+
     teamRepository.findById(teamId)
         .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
 
@@ -287,55 +278,11 @@ public class ProjectService {
     return page;
   }
 
-  public Page<ProjectDto> findByTeamIdAndStatus(Long teamId, String status, Pageable pageable) {
-    teamRepository.findById(teamId)
-        .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
-
-    if (!EnumUtils.isValidEnum(Status.class, status)) {
-      throw new IllegalArgumentException("Invalid status: " + status);
-    }
-
-    Status statusEnum = Status.valueOf(status);
-    Page<Project> projectsPage = projectRepository.findByTeamIdAndStatus(teamId, statusEnum,
-        pageable);
-
-    projectsPage.getContent().stream().filter(
-            project -> !project.getStatus().equals(Status.CANCELLED) && !project.getStatus()
-                .equals(Status.COMPLETED))
-        .forEach(project -> project.setPriority(updateProjectPriority(project)));
-
-    Page<ProjectDto> page = projectsPage.map(this::convertToDto);
-
-    if (page.isEmpty()) {
-      throw new NoDataFoundException("No projects found for the given team and status.");
-    }
-
-    return page;
-  }
-
-  public Page<ProjectDto> findByTeamIdAndDueDateBefore(Long teamId, LocalDate dueDate,
-      Pageable pageable) {
-    teamRepository.findById(teamId)
-        .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
-
-    Page<Project> projectsPage = projectRepository.findByTeamIdAndDueDateBefore(teamId, dueDate,
-        pageable);
-
-    projectsPage.getContent().stream().filter(
-            project -> !project.getStatus().equals(Status.CANCELLED) && !project.getStatus()
-                .equals(Status.COMPLETED))
-        .forEach(project -> project.setPriority(updateProjectPriority(project)));
-
-    Page<ProjectDto> page = projectsPage.map(this::convertToDto);
-
-    if (page.isEmpty()) {
-      throw new NoDataFoundException("No projects found for the given team and due date.");
-    }
-
-    return page;
-  }
-
   public Page<ProjectDto> findActiveByTeamId(Long teamId, Pageable pageable) {
+    if (teamId == null) {
+      throw new IllegalArgumentException("Team id cannot be null");
+    }
+
     teamRepository.findById(teamId)
         .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
 
@@ -359,10 +306,6 @@ public class ProjectService {
   public ProjectDto createProject(ProjectDto projectDto) {
     if (!projectDto.getStartDate().isAfter(LocalDate.now())) {
       throw new IllegalArgumentException("Start date must be after the current date.");
-    }
-
-    if (!projectDto.getDueDate().isAfter(LocalDate.now())) {
-      throw new IllegalArgumentException("Due date must be after the current date.");
     }
 
     if (projectDto.getStartDate().isAfter(projectDto.getDueDate())) {
@@ -419,11 +362,16 @@ public class ProjectService {
 
   @Transactional
   public ProjectDto updateProject(Long projectId, ProjectDto projectDto) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
     if (projectDto.getStartDate().isBefore(LocalDate.now())) {
       throw new IllegalArgumentException("Start date must be after the current date.");
     }
-    if (projectDto.getDueDate().isBefore(LocalDate.now())) {
-      throw new IllegalArgumentException("Due date must be after the current date.");
+
+    if (projectDto.getDueDate().isBefore(projectDto.getStartDate())) {
+      throw new IllegalArgumentException("Due date must be after the start date.");
     }
 
     if (!projectDto.getStartDate().isAfter(projectDto.getDueDate())) {
@@ -483,6 +431,14 @@ public class ProjectService {
 
   @Transactional
   public ProjectDto updateProjectManager(Long projectId, Long projectManagerId) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
+    if (projectManagerId == null) {
+      throw new IllegalArgumentException("Project manager id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 
@@ -523,6 +479,14 @@ public class ProjectService {
 
   @Transactional
   public ProjectDto assignTeamToProject(Long projectId, Long teamId) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
+    if (teamId == null) {
+      throw new IllegalArgumentException("Team id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 
@@ -553,9 +517,16 @@ public class ProjectService {
     return convertToDto(updatedProject);
   }
 
-
   @Transactional
   public ProjectDto reassignTeamToProject(Long projectId, Long teamId) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
+    if (teamId == null) {
+      throw new IllegalArgumentException("Team id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 
@@ -598,9 +569,12 @@ public class ProjectService {
     return convertToDto(project);
   }
 
-
   @Transactional
   public ProjectDto completeProject(Long projectId) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project id cannot be null");
+    }
+
     Project project = projectRepository.findById(projectId)
         .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
 

@@ -3,7 +3,6 @@ package com.progresso.backend.controller;
 import com.progresso.backend.dto.ProjectDto;
 import com.progresso.backend.service.ProjectService;
 import jakarta.validation.Valid;
-import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +30,11 @@ public class ProjectController {
     this.projectService = projectService;
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or "
+      + "(hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#projectId, authentication.name)) or "
+      + "(hasAuthority('TEAMMEMBER') "
+      + "and @projectService.isTeamMemberOfProject(#projectId, authentication.name))")
   @GetMapping("/{projectId}/completion")
   public ResponseEntity<Long> getProjectCompletionPercentage(@PathVariable Long projectId) {
     long percentage = projectService.getProjectCompletionPercentage(projectId);
@@ -80,46 +84,21 @@ public class ProjectController {
     return ResponseEntity.ok(projects);
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or "
+      + "(hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#id, authentication.name)) or "
+      + "(hasAuthority('TEAMMEMBER') "
+      + "and @projectService.isTeamMemberOfProject(#id, authentication.name))")
   @GetMapping("/{id}")
   public ResponseEntity<ProjectDto> getProjectById(@PathVariable Long id) {
     ProjectDto project = projectService.findProjectById(id);
     return ResponseEntity.ok(project);
   }
 
-  @GetMapping("/manager/{managerId}/active")
-  public ResponseEntity<Page<ProjectDto>> getActiveProjectsByManager(@PathVariable Long managerId,
-      Pageable pageable) {
-    Page<ProjectDto> projects = projectService.findActiveByProjectManager(managerId, pageable);
-    return ResponseEntity.ok(projects);
-  }
-
-  @GetMapping("/task-status/{taskStatus}")
-  public ResponseEntity<Page<ProjectDto>> getProjectsByTaskStatus(@PathVariable String taskStatus,
-      Pageable pageable) {
-    Page<ProjectDto> projects = projectService.findByTaskStatus(taskStatus, pageable);
-    return ResponseEntity.ok(projects);
-  }
-
   @GetMapping("/team/{teamId}")
   public ResponseEntity<Page<ProjectDto>> findByTeamId(@PathVariable Long teamId,
       Pageable pageable) {
     Page<ProjectDto> page = projectService.findByTeamId(teamId, pageable);
-    return ResponseEntity.ok(page);
-  }
-
-  @GetMapping("/team/{teamId}/status/{status}")
-  public ResponseEntity<Page<ProjectDto>> findByTeamIdAndStatus(@PathVariable Long teamId,
-      @PathVariable String status,
-      Pageable pageable) {
-    Page<ProjectDto> page = projectService.findByTeamIdAndStatus(teamId, status, pageable);
-    return ResponseEntity.ok(page);
-  }
-
-  @GetMapping("/team/{teamId}/due-date-before/{dueDate}")
-  public ResponseEntity<Page<ProjectDto>> findByTeamIdAndDueDateBefore(@PathVariable Long teamId,
-      @PathVariable LocalDate dueDate,
-      Pageable pageable) {
-    Page<ProjectDto> page = projectService.findByTeamIdAndDueDateBefore(teamId, dueDate, pageable);
     return ResponseEntity.ok(page);
   }
 
@@ -170,7 +149,9 @@ public class ProjectController {
     return ResponseEntity.ok(updatedProject);
   }
 
-  @PreAuthorize("hasAuthority('ADMIN')")
+  @PreAuthorize("hasAuthority('ADMIN') or "
+      + "(hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#projectId, authentication.name))")
   @PutMapping("/{projectId}/assign-team/{teamId}")
   public ResponseEntity<ProjectDto> assignTeamToProject(
       @PathVariable Long projectId,
