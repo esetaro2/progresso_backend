@@ -2,7 +2,7 @@ package com.progresso.backend.controller;
 
 import com.progresso.backend.dto.TeamDto;
 import com.progresso.backend.service.TeamService;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,7 +93,7 @@ public class TeamController {
     return ResponseEntity.ok(teamsDto);
   }
 
-  @PreAuthorize("hasAuthority('ADMIN')")
+  @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
   @GetMapping("/availableTeams")
   public ResponseEntity<Page<TeamDto>> getAvailableTeams(
       @RequestParam(required = false) String searchTerm,
@@ -105,7 +105,7 @@ public class TeamController {
   @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")
   @PostMapping
   public ResponseEntity<TeamDto> createTeam(
-      @RequestParam @NotEmpty(message = "Name cannot be empty.")
+      @RequestParam @NotBlank(message = "Name cannot be empty.")
       @Size(max = 100, message = "Name cannot exceed 100 characters.") String teamName) {
     TeamDto newTeamDto = teamService.createTeam(teamName);
     return ResponseEntity.status(HttpStatus.CREATED).body(newTeamDto);
@@ -116,7 +116,7 @@ public class TeamController {
   @PutMapping("/{teamId}")
   public ResponseEntity<TeamDto> updateTeam(
       @PathVariable Long teamId,
-      @RequestParam @NotEmpty(message = "Name cannot be empty.")
+      @RequestParam @NotBlank(message = "Name cannot be empty.")
       @Size(max = 100, message = "Name cannot exceed 100 characters.") String newName) {
     TeamDto updatedTeamDto = teamService.updateTeam(teamId, newName);
     return ResponseEntity.ok(updatedTeamDto);

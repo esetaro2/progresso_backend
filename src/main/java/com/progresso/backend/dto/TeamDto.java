@@ -1,6 +1,6 @@
 package com.progresso.backend.dto;
 
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import lombok.Data;
@@ -10,7 +10,7 @@ public class TeamDto {
 
   private Long id;
 
-  @NotEmpty(message = "Name cannot be empty.")
+  @NotBlank(message = "Name cannot be empty.")
   @Size(max = 100, message = "Name cannot exceed 100 characters.")
   private String name;
 

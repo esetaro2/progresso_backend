@@ -5,6 +5,7 @@ import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.exception.InvalidRoleException;
 import com.progresso.backend.exception.NoDataFoundException;
+import com.progresso.backend.exception.ProjectNotFoundException;
 import com.progresso.backend.exception.TeamNotFoundException;
 import com.progresso.backend.exception.UserNotActiveException;
 import com.progresso.backend.exception.UserNotFoundException;
@@ -12,6 +13,7 @@ import com.progresso.backend.model.Project;
 import com.progresso.backend.model.Task;
 import com.progresso.backend.model.Team;
 import com.progresso.backend.model.User;
+import com.progresso.backend.repository.ProjectRepository;
 import com.progresso.backend.repository.TaskRepository;
 import com.progresso.backend.repository.TeamRepository;
 import com.progresso.backend.repository.UserRepository;
@@ -30,13 +32,15 @@ public class TeamService {
   private final TeamRepository teamRepository;
   private final UserRepository userRepository;
   private final TaskRepository taskRepository;
+  private final ProjectRepository projectRepository;
 
   @Autowired
   public TeamService(TeamRepository teamRepository, UserRepository userRepository,
-      TaskRepository taskRepository) {
+      TaskRepository taskRepository, ProjectRepository projectRepository) {
     this.teamRepository = teamRepository;
     this.userRepository = userRepository;
     this.taskRepository = taskRepository;
+    this.projectRepository = projectRepository;
   }
 
   private TeamDto convertToDto(Team team) {
@@ -55,28 +59,45 @@ public class TeamService {
   }
 
   public boolean isProjectManagerOfTeamProjects(Long teamId, String username) {
+    if (teamId == null || username == null || username.isEmpty()) {
+      throw new IllegalArgumentException("Team ID and username cannot be null or empty");
+    }
+
     Team team = teamRepository.findById(teamId)
         .orElseThrow(() -> new TeamNotFoundException("Team not found"));
 
     List<Project> activeProjects = team.getProjects().stream()
-        .filter(project -> project.getCompletionDate() == null).toList();
+        .filter(project -> project.getCompletionDate() == null)
+        .toList();
 
     if (activeProjects.isEmpty()) {
       return true;
     }
 
     return activeProjects.stream()
-        .anyMatch(project -> project.getProjectManager().getUsername().equals(username));
+        .anyMatch(project ->
+            project.getProjectManager() != null
+                && username.equals(project.getProjectManager().getUsername())
+        );
   }
 
   public TeamDto getTeamByName(String name) {
+    if (name == null || name.isBlank()) {
+      throw new IllegalArgumentException("Team name cannot be null or empty");
+    }
+
     Team team = teamRepository.findByNameIgnoreCase(name)
         .orElseThrow(() -> new TeamNotFoundException("Invalid team name: " + name));
 
     return convertToDto(team);
   }
 
+
   public TeamDto getTeamById(Long id) {
+    if (id == null) {
+      throw new IllegalArgumentException("Team id cannot be null");
+    }
+
     return teamRepository.findById(id)
         .map(this::convertToDto)
         .orElseThrow(() -> new TeamNotFoundException("Invalid team id: " + id));
@@ -157,6 +178,13 @@ public class TeamService {
   }
 
   public Page<TeamDto> getTeamsByProjectId(Long projectId, Pageable pageable) {
+    if (projectId == null) {
+      throw new IllegalArgumentException("Project ID cannot be null");
+    }
+
+    projectRepository.findById(projectId)
+        .orElseThrow(() -> new ProjectNotFoundException("Project not found with ID: " + projectId));
+
     Page<Team> teams = teamRepository.findTeamsByProjectId(projectId, pageable);
 
     if (teams.isEmpty()) {
@@ -204,6 +232,10 @@ public class TeamService {
 
   @Transactional
   public TeamDto updateTeam(Long id, String newName) {
+    if (id == null) {
+      throw new IllegalArgumentException("Team id cannot be null");
+    }
+
     Team team = teamRepository.findById(id)
         .orElseThrow(() -> new TeamNotFoundException("Invalid team id: " + id));
 
@@ -229,6 +261,14 @@ public class TeamService {
 
   @Transactional
   public TeamDto addMembersToTeam(Long teamId, List<Long> userIds) {
+    if (teamId == null) {
+      throw new IllegalArgumentException("Team id cannot be null");
+    }
+
+    if (userIds == null || userIds.isEmpty()) {
+      throw new IllegalArgumentException("Users list cannot be null or empty");
+    }
+
     Team team = teamRepository.findById(teamId)
         .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
 
@@ -272,6 +312,14 @@ public class TeamService {
 
   @Transactional
   public TeamDto removeMembersFromTeam(Long teamId, List<Long> userIds) {
+    if (teamId == null) {
+      throw new IllegalArgumentException("Team id cannot be null");
+    }
+
+    if (userIds == null || userIds.isEmpty()) {
+      throw new IllegalArgumentException("Users list cannot be null or empty");
+    }
+
     Team team = teamRepository.findById(teamId)
         .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
 
@@ -317,6 +365,10 @@ public class TeamService {
 
   @Transactional
   public TeamDto deleteTeam(Long teamId) {
+    if (teamId == null) {
+      throw new IllegalArgumentException("Team id cannot be null");
+    }
+
     Team team = teamRepository.findById(teamId)
         .orElseThrow(() -> new TeamNotFoundException("Team not found with ID: " + teamId));
 
