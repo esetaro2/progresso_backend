@@ -18,6 +18,7 @@ import com.progresso.backend.repository.TaskRepository;
 import com.progresso.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
+import org.apache.commons.lang3.EnumUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -49,6 +50,8 @@ public class TaskService {
     taskDto.setCompletionDate(task.getCompletionDate());
     taskDto.setStatus(task.getStatus().toString());
     taskDto.setProjectId(task.getProject().getId());
+    taskDto.setAssignedUserId(
+        task.getAssignedUser() != null ? task.getAssignedUser().getId() : null);
     taskDto.setAssignedUserUsername(
         task.getAssignedUser() != null ? task.getAssignedUser().getUsername() : null);
     return taskDto;
@@ -75,15 +78,25 @@ public class TaskService {
     return convertToDto(task);
   }
 
-  public Page<TaskDto> findByProjectId(Long projectId, Pageable pageable) {
+  public Page<TaskDto> findByProjectIdAndStatusAndPriority(Long projectId, String status,
+      String priority, Pageable pageable) {
     if (projectId == null) {
       throw new IllegalArgumentException("Project id cannot be null");
     }
 
+    Status statusEnum = (status != null && EnumUtils.isValidEnum(Status.class, status))
+        ? Status.valueOf(status)
+        : null;
+
+    Priority priorityEnum =
+        (priority != null && EnumUtils.isValidEnum(Priority.class, priority)) ? Priority.valueOf(
+            priority) : null;
+
     projectRepository.findById(projectId)
         .orElseThrow(() -> new IllegalArgumentException("Project not found with ID: " + projectId));
 
-    Page<Task> tasks = taskRepository.findByProjectId(projectId, pageable);
+    Page<Task> tasks = taskRepository.findByProjectIdAndStatusAndPriority(projectId, statusEnum,
+        priorityEnum, pageable);
 
     if (tasks.isEmpty()) {
       throw new NoDataFoundException("No tasks found for project with ID: " + projectId);
@@ -120,21 +133,20 @@ public class TaskService {
       throw new IllegalStateException("Cannot create a task for a completed or cancelled project.");
     }
 
-    if (taskDto.getStartDate().isBefore(LocalDate.now()) || taskDto.getDueDate()
-        .isBefore(LocalDate.now())) {
-      throw new IllegalArgumentException("Start date and due date must be after the current date.");
-    }
-
-    if (taskDto.getStartDate().isAfter(taskDto.getDueDate())) {
-      throw new IllegalArgumentException("Start date cannot be after due date.");
+    if (taskDto.getStartDate().isBefore(LocalDate.now())) {
+      throw new IllegalArgumentException("Start date must be today or in the future.");
     }
 
     if (taskDto.getStartDate().isBefore(project.getStartDate())) {
       throw new IllegalArgumentException("Start date cannot be before project start.");
     }
 
-    if (taskDto.getDueDate().isAfter(project.getDueDate())) {
-      throw new IllegalArgumentException("Due date cannot be after project due.");
+    if (taskDto.getStartDate().isAfter(project.getDueDate())) {
+      throw new IllegalArgumentException("Start date cannot be after project due date.");
+    }
+
+    if (taskDto.getStartDate().isAfter(taskDto.getDueDate())) {
+      throw new IllegalArgumentException("Start date cannot be after due date.");
     }
 
     String finalName = taskDto.getName();
@@ -196,20 +208,37 @@ public class TaskService {
       throw new IllegalArgumentException("Task id cannot be null");
     }
 
-    if (taskDto.getStartDate().isBefore(LocalDate.now()) || taskDto.getDueDate()
-        .isBefore(LocalDate.now())) {
-      throw new IllegalArgumentException(
-          "Start date and due date must be after the current date.");
+    Task task = taskRepository.findById(taskId)
+        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
+
+    if (taskDto.getCompletionDate() != null && !taskDto.getCompletionDate()
+        .equals(task.getCompletionDate())) {
+      throw new IllegalArgumentException("Cannot change completion date.");
+    }
+
+    if (taskDto.getStatus() != null && !taskDto.getStatus().equals(task.getStatus().name())) {
+      throw new IllegalArgumentException("Cannot change task status.");
+    }
+
+    if (taskDto.getAssignedUserId() != null && !taskDto.getAssignedUserId()
+        .equals(task.getAssignedUser().getId())) {
+      throw new IllegalArgumentException("Cannot change assigned user.");
+    }
+
+    if (taskDto.getAssignedUserUsername() != null && !taskDto.getAssignedUserUsername()
+        .equals(task.getAssignedUser().getUsername())) {
+      throw new IllegalArgumentException("Cannot change assigned user.");
+    }
+
+    Project project = getProject(taskDto, task);
+
+    if (taskDto.getStartDate().isBefore(LocalDate.now())) {
+      throw new IllegalArgumentException("Start date must be today or in the future.");
     }
 
     if (taskDto.getStartDate().isAfter(taskDto.getDueDate())) {
       throw new IllegalArgumentException("Start date cannot be after due date.");
     }
-
-    Task task = taskRepository.findById(taskId)
-        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
-
-    Project project = getProject(taskDto, task);
 
     String baseName = taskDto.getName();
     String finalName = baseName;
@@ -236,7 +265,6 @@ public class TaskService {
     task.setPriority(Priority.valueOf(taskDto.getPriority()));
     task.setStartDate(taskDto.getStartDate());
     task.setDueDate(taskDto.getDueDate());
-    task.setStatus(Status.valueOf(taskDto.getStatus()));
 
     Task updatedTask = taskRepository.save(task);
     return convertToDto(updatedTask);
@@ -249,8 +277,8 @@ public class TaskService {
       throw new IllegalArgumentException("Task start date cannot be before project start date.");
     }
 
-    if (taskDto.getDueDate().isAfter(project.getDueDate())) {
-      throw new IllegalArgumentException("Task due date cannot be after project due date.");
+    if (taskDto.getStartDate().isAfter(project.getDueDate())) {
+      throw new IllegalArgumentException("Start date cannot be after project due date.");
     }
 
     if (task.getStatus().equals(Status.COMPLETED) || task.getStatus().equals(Status.CANCELLED)) {
@@ -291,11 +319,6 @@ public class TaskService {
 
     if (task.getAssignedUser() == null) {
       throw new UserNotFoundException("Task is not assigned to any user");
-    }
-
-    if (task.getAssignedUser().equals(newUser)) {
-      throw new IllegalArgumentException(
-          "Task is already assigned to user: " + newUser.getUsername());
     }
 
     if (!newUser.getRole().equals(Role.TEAMMEMBER)) {

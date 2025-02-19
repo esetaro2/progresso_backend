@@ -43,9 +43,12 @@ public class TaskController {
       + "(hasAuthority('TEAMMEMBER') "
       + "and @projectService.isTeamMemberOfProject(#projectId, authentication.name))")
   @GetMapping("/project/{projectId}")
-  public ResponseEntity<Page<TaskDto>> getTasksByProjectId(@PathVariable Long projectId,
+  public ResponseEntity<Page<TaskDto>> getTasksByProjectIdAndFilters(@PathVariable Long projectId,
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) String priority,
       Pageable pageable) {
-    Page<TaskDto> tasks = taskService.findByProjectId(projectId, pageable);
+    Page<TaskDto> tasks = taskService.findByProjectIdAndStatusAndPriority(projectId, status,
+        priority, pageable);
     return ResponseEntity.ok(tasks);
   }
 

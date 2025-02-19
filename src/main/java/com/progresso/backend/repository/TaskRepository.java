@@ -27,8 +27,17 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
   Page<Task> findByCompletionDateAfter(@Param("completionDate") LocalDate completionDate,
       Pageable pageable);
 
-  @Query("SELECT t FROM Task t WHERE t.project.id = :projectId AND t.status <> 'CANCELLED'")
-  Page<Task> findByProjectId(@Param("projectId") Long projectId, Pageable pageable);
+  @Query("SELECT t FROM Task t "
+      + "WHERE t.project.id = :projectId "
+      + "AND t.status <> 'CANCELLED' "
+      + "AND (:status IS NULL OR t.status = :status) "
+      + "AND (:priority IS NULL OR t.priority = :priority)")
+  Page<Task> findByProjectIdAndStatusAndPriority(
+      @Param("projectId") Long projectId,
+      @Param("status") Status status,
+      @Param("priority") Priority priority,
+      Pageable pageable);
+
 
   @Query("SELECT t FROM Task t WHERE t.project.id = :projectId AND t.status = :status")
   Page<Task> findByProjectIdAndStatus(@Param("projectId") Long projectId,
@@ -79,5 +88,6 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
       @Param("endDate") LocalDate endDate, Pageable pageable);
 
   @Query("SELECT COUNT(t) > 0 FROM Task t WHERE t.project.id = :projectId AND t.name = :name AND t.status <> 'CANCELLED'")
-  boolean existsByProjectIdAndNameAndStatusNot(@Param("projectId") Long projectId, @Param("name") String name, @Param("status") Status status);
+  boolean existsByProjectIdAndNameAndStatusNot(@Param("projectId") Long projectId,
+      @Param("name") String name, @Param("status") Status status);
 }
