@@ -73,9 +73,13 @@ public class ProjectService {
     LocalDate startDate = project.getStartDate();
     LocalDate dueDate = project.getDueDate();
 
+    if (startDate == null || dueDate == null) {
+      throw new IllegalArgumentException("Start date and due date must not be null.");
+    }
+
     Priority priority = Priority.LOW;
 
-    if (currentDate.isAfter(startDate) || currentDate.equals(startDate)) {
+    if (!currentDate.isBefore(startDate)) {
       long daysRemaining = ChronoUnit.DAYS.between(currentDate, dueDate);
 
       if (daysRemaining <= 7) {
@@ -304,8 +308,8 @@ public class ProjectService {
 
   @Transactional
   public ProjectDto createProject(ProjectDto projectDto) {
-    if (!projectDto.getStartDate().isAfter(LocalDate.now())) {
-      throw new IllegalArgumentException("Start date must be after the current date.");
+    if (projectDto.getStartDate().isBefore(LocalDate.now())) {
+      throw new IllegalArgumentException("Start date must be today or in the future.");
     }
 
     if (projectDto.getStartDate().isAfter(projectDto.getDueDate())) {
@@ -359,7 +363,6 @@ public class ProjectService {
     return convertToDto(savedProject);
   }
 
-
   @Transactional
   public ProjectDto updateProject(Long projectId, ProjectDto projectDto) {
     if (projectId == null) {
@@ -367,66 +370,70 @@ public class ProjectService {
     }
 
     if (projectDto.getStartDate().isBefore(LocalDate.now())) {
-      throw new IllegalArgumentException("Start date must be after the current date.");
-    }
-
-    if (projectDto.getDueDate().isBefore(projectDto.getStartDate())) {
-      throw new IllegalArgumentException("Due date must be after the start date.");
+      throw new IllegalArgumentException("Start date must be today or in the future.");
     }
 
     if (!projectDto.getStartDate().isAfter(projectDto.getDueDate())) {
-      String baseName = projectDto.getName();
-      String finalName = baseName;
-      int counter = 1;
-      while (projectRepository.existsByNameIgnoreCase(finalName)) {
-        String suffix = " (" + counter + ")";
-        if ((baseName.length() + suffix.length()) > 100) {
-          finalName = baseName.substring(0, 100 - suffix.length());
-          break;
-        }
-        finalName = baseName + suffix;
-        counter++;
-      }
 
       Project project = projectRepository.findById(projectId)
           .orElseThrow(
               () -> new ProjectNotFoundException("Project not found with ID: " + projectId));
+
+      String baseName = projectDto.getName();
+      String finalName = baseName;
+      int counter = 1;
+      if (!project.getName().equals(baseName)) {
+        while (projectRepository.existsByNameIgnoreCase(finalName)) {
+          String suffix = " (" + counter + ")";
+          if ((baseName.length() + suffix.length()) > 100) {
+            finalName = baseName.substring(0, 100 - suffix.length());
+            break;
+          }
+          finalName = baseName + suffix;
+          counter++;
+        }
+      }
+
+      if (projectDto.getPriority() != null && !projectDto.getPriority()
+          .equals(project.getPriority().name())) {
+        throw new IllegalArgumentException("Cannot change project priority.");
+      }
 
       if (projectDto.getCompletionDate() != null && !projectDto.getCompletionDate()
           .equals(project.getCompletionDate())) {
         throw new IllegalArgumentException("Cannot change completion date.");
       }
 
-      if (!projectDto.getProjectManagerId().equals(project.getProjectManager().getId())) {
-        throw new IllegalArgumentException("Cannot change project manager.");
+      if (projectDto.getStatus() != null && !projectDto.getStatus()
+          .equals(project.getStatus().name())) {
+        throw new IllegalArgumentException("Cannot change project status.");
       }
 
-      if (!projectDto.getTaskIds().equals(project.getTasks().stream().map(Task::getId).toList())) {
+      if (projectDto.getTaskIds() != null && !projectDto.getTaskIds()
+          .equals(project.getTasks().stream().map(Task::getId).toList())) {
         throw new IllegalArgumentException("Cannot change tasks.");
       }
 
-      if (!projectDto.getTeamId().equals(project.getTeam().getId())) {
+      if (projectDto.getTeamId() != null && !projectDto.getTeamId()
+          .equals(project.getTeam().getId())) {
         throw new IllegalArgumentException("Cannot change team.");
       }
 
-      if (!projectDto.getCommentIds()
+      if (projectDto.getCommentIds() != null && !projectDto.getCommentIds()
           .equals(project.getComments().stream().map(Comment::getId).toList())) {
         throw new IllegalArgumentException("Cannot change comments.");
       }
 
       project.setName(finalName);
       project.setDescription(projectDto.getDescription());
-      project.setPriority(Priority.valueOf(projectDto.getPriority()));
       project.setStartDate(projectDto.getStartDate());
       project.setDueDate(projectDto.getDueDate());
-      project.setStatus(Status.valueOf(projectDto.getStatus()));
 
       Project updatedProject = projectRepository.save(project);
       return convertToDto(updatedProject);
     } else {
       throw new IllegalArgumentException("Start date cannot be after due date.");
     }
-
   }
 
   @Transactional
@@ -464,10 +471,6 @@ public class ProjectService {
         List.of(Status.CANCELLED, Status.COMPLETED)) >= 5) {
       throw new IllegalArgumentException(
           "Project Manager cannot manage more than 5 active projects.");
-    }
-
-    if (project.getProjectManager().equals(projectManager)) {
-      throw new IllegalArgumentException("User is already the current project manager");
     }
 
     project.setProjectManager(projectManager);
@@ -553,10 +556,6 @@ public class ProjectService {
       throw new TeamNotFoundException("Team is not assigned to a project.");
     }
 
-    if (currTeam.equals(team)) {
-      throw new IllegalArgumentException("Team is already assigned to this project.");
-    }
-
     currTeam.getProjects().remove(project);
 
     project.setTeam(team);
@@ -610,7 +609,6 @@ public class ProjectService {
 
     return convertToDto(updatedProject);
   }
-
 
   @Transactional
   public ProjectDto removeProject(Long projectId) {

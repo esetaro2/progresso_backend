@@ -44,6 +44,7 @@ public class SecurityConfig {
             .requestMatchers("/api/teammember/**").hasAuthority("TEAMMEMBER")
 
             // AUTH
+            .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/auth/register").hasAuthority("ADMIN")
             .requestMatchers(HttpMethod.PUT, "/api/auth/{userId}/deactivate").hasAuthority("ADMIN")
             .requestMatchers(HttpMethod.PUT, "/api/auth/{userId}/activate").hasAuthority("ADMIN")
