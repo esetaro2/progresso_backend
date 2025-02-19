@@ -16,6 +16,7 @@ import com.progresso.backend.model.Task;
 import com.progresso.backend.model.Team;
 import com.progresso.backend.model.User;
 import com.progresso.backend.repository.ProjectRepository;
+import com.progresso.backend.repository.TaskRepository;
 import com.progresso.backend.repository.TeamRepository;
 import com.progresso.backend.repository.UserRepository;
 import java.time.LocalDate;
@@ -37,14 +38,16 @@ public class ProjectService {
   private final UserRepository userRepository;
   private final TeamRepository teamRepository;
   private final CommentService commentService;
+  private final TaskRepository taskRepository;
 
   @Autowired
   public ProjectService(ProjectRepository projectRepository, UserRepository userRepository,
-      TeamRepository teamRepository, CommentService commentService) {
+      TeamRepository teamRepository, CommentService commentService, TaskRepository taskRepository) {
     this.projectRepository = projectRepository;
     this.userRepository = userRepository;
     this.teamRepository = teamRepository;
     this.commentService = commentService;
+    this.taskRepository = taskRepository;
   }
 
   public ProjectDto convertToDto(Project project) {
@@ -479,7 +482,6 @@ public class ProjectService {
     return convertToDto(updatedProject);
   }
 
-
   @Transactional
   public ProjectDto assignTeamToProject(Long projectId, Long teamId) {
     if (projectId == null) {
@@ -554,6 +556,16 @@ public class ProjectService {
     Team currTeam = project.getTeam();
     if (currTeam == null) {
       throw new TeamNotFoundException("Team is not assigned to a project.");
+    }
+
+    for (User tm : currTeam.getTeamMembers()) {
+      List<Task> tasksToRemove = new ArrayList<>(tm.getAssignedTasks());
+      for (Task task : tasksToRemove) {
+        task.setAssignedUser(null);
+        tm.getAssignedTasks().remove(task);
+        userRepository.save(tm);
+        taskRepository.save(task);
+      }
     }
 
     currTeam.getProjects().remove(project);

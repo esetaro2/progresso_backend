@@ -317,22 +317,21 @@ public class TaskService {
       throw new UserNotFoundException("User " + newUser.getUsername() + " not found in this team");
     }
 
-    if (task.getAssignedUser() == null) {
-      throw new UserNotFoundException("Task is not assigned to any user");
-    }
-
     if (!newUser.getRole().equals(Role.TEAMMEMBER)) {
       throw new InvalidRoleException("This user is not a team member: " + newUser.getUsername());
     }
 
     User oldUser = task.getAssignedUser();
-    oldUser.getAssignedTasks().remove(task);
+
+    if (oldUser != null) {
+      oldUser.getAssignedTasks().remove(task);
+      userRepository.save(oldUser);
+    }
 
     task.setAssignedUser(newUser);
     newUser.getAssignedTasks().add(task);
 
     taskRepository.save(task);
-    userRepository.save(oldUser);
     userRepository.save(newUser);
 
     return convertToDto(task);
