@@ -16,8 +16,8 @@ public class CommentDto {
 
   private Long id;
 
-  @NotBlank(message = "Content cannot be empty")
-  @Size(max = 500, message = "Content must be between 1 and 500 characters")
+  @NotBlank(message = "Content cannot be empty.")
+  @Size(max = 500, message = "Content must be between 1 and 500 characters.")
   private String content;
 
   private LocalDateTime creationDate;
@@ -25,7 +25,7 @@ public class CommentDto {
   @NotNull(message = "User ID cannot be null")
   private Long userId;
 
-  @NotNull(message = "Project ID cannot be null")
+  @NotNull(message = "Project ID cannot be null.")
   private Long projectId;
 
   private Long parentId;

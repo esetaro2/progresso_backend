@@ -19,6 +19,8 @@ import com.progresso.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import org.apache.commons.lang3.EnumUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +28,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class TaskService {
+
+  private static final Logger logger = LoggerFactory.getLogger(TaskService.class);
 
   private final TaskRepository taskRepository;
   private final ProjectRepository projectRepository;
@@ -59,29 +63,43 @@ public class TaskService {
 
   public Long getProjectIdByTaskId(Long taskId) {
     if (taskId == null) {
-      throw new IllegalArgumentException("Task id cannot be null");
+      logger.error("getProjectIdByTaskId: Task id cannot be null.");
+      throw new IllegalArgumentException("Task id cannot be null.");
     }
 
     return taskRepository.findById(taskId)
-        .map(task -> task.getProject().getId())
-        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
+        .map(task -> {
+          logger.info("getProjectIdByTaskId: Found project ID {} for task ID {}",
+              task.getProject().getId(), taskId);
+          return task.getProject().getId();
+        })
+        .orElseThrow(() -> {
+          logger.error("getProjectIdByTaskId: Task not found with ID: {}", taskId);
+          return new TaskNotFoundException("Task not found.");
+        });
   }
 
   public TaskDto findById(Long taskId) {
     if (taskId == null) {
-      throw new IllegalArgumentException("Task id cannot be null");
+      logger.error("findById: Task id cannot be null.");
+      throw new IllegalArgumentException("Task id cannot be null.");
     }
 
     Task task = taskRepository.findById(taskId)
-        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
+        .orElseThrow(() -> {
+          logger.error("findById: Task not found with ID: {}", taskId);
+          return new TaskNotFoundException("Task not found.");
+        });
 
+    logger.info("findById: Task found with ID: {}", taskId);
     return convertToDto(task);
   }
 
   public Page<TaskDto> findByProjectIdAndStatusAndPriority(Long projectId, String status,
       String priority, Pageable pageable) {
     if (projectId == null) {
-      throw new IllegalArgumentException("Project id cannot be null");
+      logger.error("findByProjectIdAndStatusAndPriority: Project id cannot be null.");
+      throw new IllegalArgumentException("Project id cannot be null.");
     }
 
     Status statusEnum = (status != null && EnumUtils.isValidEnum(Status.class, status))
@@ -93,66 +111,102 @@ public class TaskService {
             priority) : null;
 
     projectRepository.findById(projectId)
-        .orElseThrow(() -> new IllegalArgumentException("Project not found with ID: " + projectId));
+        .orElseThrow(() -> {
+          logger.error("findByProjectIdAndStatusAndPriority: Project not found with ID: {}",
+              projectId);
+          return new IllegalArgumentException("Project not found.");
+        });
 
     Page<Task> tasks = taskRepository.findByProjectIdAndStatusAndPriority(projectId, statusEnum,
         priorityEnum, pageable);
 
     if (tasks.isEmpty()) {
-      throw new NoDataFoundException("No tasks found for project with ID: " + projectId);
+      logger.warn("findByProjectIdAndStatusAndPriority: No tasks found for project with ID: {}",
+          projectId);
+      throw new NoDataFoundException("No tasks found for this project.");
     }
+
+    logger.info("findByProjectIdAndStatusAndPriority: Retrieved {} tasks for project with ID: {}",
+        tasks.getTotalElements(), projectId);
     return tasks.map(this::convertToDto);
   }
 
   public Page<TaskDto> findTasksByUser(Long userId, Pageable pageable) {
     if (userId == null) {
-      throw new IllegalArgumentException("User id cannot be null");
+      logger.error("findTasksByUser: User id cannot be null.");
+      throw new IllegalArgumentException("User id cannot be null.");
     }
 
     userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+        .orElseThrow(() -> {
+          logger.error("findTasksByUser: User not found with ID: {}", userId);
+          return new UserNotFoundException("User not found.");
+        });
+
     Page<Task> tasks = taskRepository.findByAssignedUserId(userId, pageable);
     if (tasks.isEmpty()) {
-      throw new NoDataFoundException("No tasks found for user with ID: " + userId);
+      logger.warn("findTasksByUser: No tasks found for user with ID: {}", userId);
+      throw new NoDataFoundException("No tasks found for this user.");
     }
+
+    logger.info("findTasksByUser: Retrieved {} tasks for user with ID: {}",
+        tasks.getTotalElements(), userId);
     return tasks.map(this::convertToDto);
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   @Transactional
   public TaskDto createAndAssignTask(TaskDto taskDto, Long userId) {
     if (userId == null) {
-      throw new IllegalArgumentException("User id cannot be null");
+      logger.error("createAndAssignTask: User id cannot be null.");
+      throw new IllegalArgumentException("User id cannot be null.");
     }
 
     Project project = projectRepository.findById(taskDto.getProjectId())
-        .orElseThrow(() -> new ProjectNotFoundException(
-            "Project not found with ID: " + taskDto.getProjectId()));
+        .orElseThrow(() -> {
+          logger.error("createAndAssignTask: Project not found with ID: {}",
+              taskDto.getProjectId());
+          return new ProjectNotFoundException("Project not found.");
+        });
 
     if (project.getStatus().equals(Status.COMPLETED) || project.getStatus()
         .equals(Status.CANCELLED)) {
+      logger.error(
+          "createAndAssignTask: Cannot create a task for a completed or cancelled project. Project ID: {}",
+          taskDto.getProjectId());
       throw new IllegalStateException("Cannot create a task for a completed or cancelled project.");
     }
 
     if (taskDto.getStartDate().isBefore(LocalDate.now())) {
+      logger.error("createAndAssignTask: Start date must be today or in the future. StartDate: {}",
+          taskDto.getStartDate());
       throw new IllegalArgumentException("Start date must be today or in the future.");
     }
 
+    if (taskDto.getStartDate().isAfter(taskDto.getDueDate())) {
+      logger.error(
+          "createAndAssignTask: Start date cannot be after due date. StartDate: {}, DueDate: {}",
+          taskDto.getStartDate(), taskDto.getDueDate());
+      throw new IllegalArgumentException("Start date cannot be after due date.");
+    }
+
     if (taskDto.getStartDate().isBefore(project.getStartDate())) {
+      logger.error(
+          "createAndAssignTask: Start date cannot be before project start date. ProjectStartDate: {}, TaskStartDate: {}",
+          project.getStartDate(), taskDto.getStartDate());
       throw new IllegalArgumentException("Start date cannot be before project start.");
     }
 
     if (taskDto.getStartDate().isAfter(project.getDueDate())) {
+      logger.error(
+          "createAndAssignTask: Start date cannot be after project due date. ProjectDueDate: {}, TaskStartDate: {}",
+          project.getDueDate(), taskDto.getStartDate());
       throw new IllegalArgumentException("Start date cannot be after project due date.");
-    }
-
-    if (taskDto.getStartDate().isAfter(taskDto.getDueDate())) {
-      throw new IllegalArgumentException("Start date cannot be after due date.");
     }
 
     String finalName = taskDto.getName();
     int counter = 1;
-    while (taskRepository.existsByProjectIdAndNameAndStatusNot(project.getId(), finalName,
-        Status.CANCELLED)) {
+    while (taskRepository.existsByProjectIdAndName(project.getId(), finalName)) {
       String suffix = " (" + counter + ")";
       if ((finalName.length() + suffix.length()) > 100) {
         finalName = finalName.substring(0, 100 - suffix.length());
@@ -171,19 +225,24 @@ public class TaskService {
     task.setProject(project);
 
     User user = userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+        .orElseThrow(() -> {
+          logger.error("createAndAssignTask: User not found with ID: {}", userId);
+          return new UserNotFoundException("User not found.");
+        });
 
     if (!user.getActive()) {
+      logger.error("createAndAssignTask: User {} is not active.", user.getUsername());
       throw new UserNotActiveException("User " + user.getUsername() + " is not active.");
     }
 
     if (!user.getRole().equals(Role.TEAMMEMBER)) {
-      throw new InvalidRoleException("This user is not a team member: " + user.getUsername());
+      logger.error("createAndAssignTask: This user is not a team member: {}.", user.getUsername());
+      throw new InvalidRoleException("This user is not a team member: " + user.getUsername() + ".");
     }
 
     if (!project.getTeam().getTeamMembers().contains(user)) {
-      throw new IllegalArgumentException(
-          "User " + user.getUsername() + " not found in this team.");
+      logger.error("createAndAssignTask: User {} not found in this team.", user.getUsername());
+      throw new IllegalArgumentException("User " + user.getUsername() + " not found in this team.");
     }
 
     task.setAssignedUser(user);
@@ -199,46 +258,53 @@ public class TaskService {
       projectRepository.save(project);
     }
 
+    logger.info("createAndAssignTask: Created and assigned task {} to user {} for project {}",
+        savedTask.getId(), user.getUsername(), project.getId());
     return convertToDto(savedTask);
   }
 
   @Transactional
   public TaskDto updateTask(Long taskId, TaskDto taskDto) {
     if (taskId == null) {
-      throw new IllegalArgumentException("Task id cannot be null");
+      logger.error("updateTask: Task id cannot be null.");
+      throw new IllegalArgumentException("Task id cannot be null.");
     }
 
     Task task = taskRepository.findById(taskId)
-        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
+        .orElseThrow(() -> {
+          logger.error("updateTask: Task not found with ID: {}", taskId);
+          return new TaskNotFoundException("Task not found.");
+        });
+
+    if (!taskDto.getStartDate().equals(task.getStartDate())) {
+      logger.error("updateTask: Cannot change start date for tasks. Task ID: {}", taskId);
+      throw new IllegalArgumentException("Cannot change start date for an ongoing task.");
+    }
+
+    if (taskDto.getStartDate().isAfter(taskDto.getDueDate())) {
+      logger.error("updateTask: Start date cannot be after due date. StartDate: {}, DueDate: {}",
+          taskDto.getStartDate(), taskDto.getDueDate());
+      throw new IllegalArgumentException("Start date cannot be after due date.");
+    }
 
     if (taskDto.getCompletionDate() != null && !taskDto.getCompletionDate()
         .equals(task.getCompletionDate())) {
+      logger.error("updateTask: Cannot change completion date. Task ID: {}", taskId);
       throw new IllegalArgumentException("Cannot change completion date.");
     }
 
     if (taskDto.getStatus() != null && !taskDto.getStatus().equals(task.getStatus().name())) {
+      logger.error("updateTask: Cannot change task status. Task ID: {}", taskId);
       throw new IllegalArgumentException("Cannot change task status.");
     }
 
     if (taskDto.getAssignedUserId() != null && !taskDto.getAssignedUserId()
         .equals(task.getAssignedUser().getId())) {
+      logger.error("updateTask: Cannot change assigned user. Task ID: {}", taskId);
       throw new IllegalArgumentException("Cannot change assigned user.");
     }
 
-    if (taskDto.getAssignedUserUsername() != null && !taskDto.getAssignedUserUsername()
-        .equals(task.getAssignedUser().getUsername())) {
-      throw new IllegalArgumentException("Cannot change assigned user.");
-    }
-
-    Project project = getProject(taskDto, task);
-
-    if (taskDto.getStartDate().isBefore(LocalDate.now())) {
-      throw new IllegalArgumentException("Start date must be today or in the future.");
-    }
-
-    if (taskDto.getStartDate().isAfter(taskDto.getDueDate())) {
-      throw new IllegalArgumentException("Start date cannot be after due date.");
-    }
+    Project project = getProjectAndValidateDatesAndStatuses(taskDto, task);
 
     String baseName = taskDto.getName();
     String finalName = baseName;
@@ -248,7 +314,6 @@ public class TaskService {
       String finalName1 = finalName;
       while (project.getTasks().stream()
           .anyMatch(t -> !t.getId().equals(task.getId())
-              && !t.getStatus().equals(Status.CANCELLED)
               && t.getName().equals(finalName1))) {
         finalName = baseName + " (" + counter + ")";
         counter++;
@@ -267,63 +332,99 @@ public class TaskService {
     task.setDueDate(taskDto.getDueDate());
 
     Task updatedTask = taskRepository.save(task);
+    logger.info("updateTask: Updated task with ID: {}", taskId);
     return convertToDto(updatedTask);
   }
 
-  private static Project getProject(TaskDto taskDto, Task task) {
+  @SuppressWarnings("checkstyle:LineLength")
+  private static Project getProjectAndValidateDatesAndStatuses(TaskDto taskDto, Task task) {
     Project project = task.getProject();
 
-    if (taskDto.getStartDate().isBefore(project.getStartDate())) {
-      throw new IllegalArgumentException("Task start date cannot be before project start date.");
+    if (taskDto.getDueDate().isAfter(project.getDueDate())) {
+      logger.error(
+          "getProjectAndValidateDatesAndStatuses: Due date cannot be after project due date. TaskDueDate: {}, ProjectDueDate: {}",
+          taskDto.getDueDate(), project.getDueDate());
+      throw new IllegalArgumentException("Due date cannot be after project due date.");
     }
 
-    if (taskDto.getStartDate().isAfter(project.getDueDate())) {
-      throw new IllegalArgumentException("Start date cannot be after project due date.");
-    }
-
-    if (task.getStatus().equals(Status.COMPLETED) || task.getStatus().equals(Status.CANCELLED)) {
-      throw new IllegalStateException("Cannot update a completed or cancelled task.");
+    if (task.getStatus().equals(Status.COMPLETED)) {
+      logger.error(
+          "getProjectAndValidateDatesAndStatuses: Cannot update a completed task. Task ID: {}",
+          task.getId());
+      throw new IllegalStateException("Cannot update a completed task.");
     }
 
     if (project.getStatus().equals(Status.COMPLETED) || project.getStatus()
         .equals(Status.CANCELLED)) {
-      throw new IllegalStateException(
-          "Cannot update a task in a completed or cancelled project.");
+      logger.error(
+          "getProjectAndValidateDatesAndStatuses: Cannot update a task in a completed or cancelled project. Project ID: {}",
+          project.getId());
+      throw new IllegalStateException("Cannot update a task in a completed or cancelled project.");
     }
     return project;
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   @Transactional
   public TaskDto reassignTaskToTeamMember(Long taskId, Long userId) {
     if (taskId == null) {
-      throw new IllegalArgumentException("Task id cannot be null");
+      logger.error("reassignTaskToTeamMember: Task id cannot be null.");
+      throw new IllegalArgumentException("Task id cannot be null.");
     }
 
     if (userId == null) {
-      throw new IllegalArgumentException("User id cannot be null");
+      logger.error("reassignTaskToTeamMember: User id cannot be null.");
+      throw new IllegalArgumentException("User id cannot be null.");
     }
 
     Task task = taskRepository.findById(taskId)
-        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
+        .orElseThrow(() -> {
+          logger.error("reassignTaskToTeamMember: Task not found with ID: {}", taskId);
+          return new TaskNotFoundException("Task not found.");
+        });
+
+    if (task.getStatus().equals(Status.COMPLETED)) {
+      logger.error("reassignTaskToTeamMember: Cannot reassign a completed task. Task ID: {}",
+          taskId);
+      throw new IllegalStateException("Cannot reassign a completed task.");
+    }
+
+    if (task.getProject().getStatus().equals(Status.CANCELLED) || task.getProject().getStatus()
+        .equals(Status.COMPLETED)) {
+      logger.error(
+          "reassignTaskToTeamMember: Cannot reassign a task in a completed or cancelled project. Project ID: {}",
+          task.getProject().getId());
+      throw new IllegalStateException(
+          "Cannot reassign a task in a completed or cancelled project.");
+    }
 
     User newUser = userRepository.findById(userId)
-        .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+        .orElseThrow(() -> {
+          logger.error("reassignTaskToTeamMember: User not found with ID: {}", userId);
+          return new UserNotFoundException("User not found.");
+        });
 
     if (!newUser.getActive()) {
-      throw new UserNotActiveException("User " + newUser.getUsername() + " is not active");
+      logger.error("reassignTaskToTeamMember: User {} is not active.", newUser.getUsername());
+      throw new UserNotActiveException("User " + newUser.getUsername() + " is not active.");
     }
 
     if (!task.getProject().getTeam().getTeamMembers().contains(newUser)) {
-      throw new UserNotFoundException("User " + newUser.getUsername() + " not found in this team");
+      logger.error("reassignTaskToTeamMember: User {} not found in this team.",
+          newUser.getUsername());
+      throw new UserNotFoundException("User " + newUser.getUsername() + " not found in this team.");
     }
 
     if (!newUser.getRole().equals(Role.TEAMMEMBER)) {
-      throw new InvalidRoleException("This user is not a team member: " + newUser.getUsername());
+      logger.error("reassignTaskToTeamMember: This user is not a team member: {}.",
+          newUser.getUsername());
+      throw new InvalidRoleException(
+          "This user is not a team member: " + newUser.getUsername() + ".");
     }
 
     User oldUser = task.getAssignedUser();
 
-    if (oldUser != null) {
+    if (oldUser != null && task.getStatus().equals(Status.IN_PROGRESS)) {
       oldUser.getAssignedTasks().remove(task);
       userRepository.save(oldUser);
     }
@@ -334,30 +435,43 @@ public class TaskService {
     taskRepository.save(task);
     userRepository.save(newUser);
 
+    logger.info("reassignTaskToTeamMember: Reassigned task {} to user {}", taskId,
+        newUser.getUsername());
     return convertToDto(task);
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   @Transactional
   public TaskDto completeTask(Long taskId) {
     if (taskId == null) {
-      throw new IllegalArgumentException("Task id cannot be null");
+      logger.error("completeTask: Task id cannot be null.");
+      throw new IllegalArgumentException("Task id cannot be null.");
     }
 
     Task task = taskRepository.findById(taskId)
-        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
+        .orElseThrow(() -> {
+          logger.error("completeTask: Task not found with ID: {}", taskId);
+          return new TaskNotFoundException("Task not found.");
+        });
 
-    if (task.getStatus() == Status.COMPLETED) {
-      throw new IllegalStateException("Task is already completed");
+    if (task.getStatus().equals(Status.COMPLETED)) {
+      logger.error("completeTask: This task is already completed. Task ID: {}", taskId);
+      throw new IllegalStateException("This task is already completed.");
     }
 
     if (LocalDate.now().isBefore(task.getStartDate())) {
+      logger.error("completeTask: Cannot complete the task before the start date. Task ID: {}",
+          taskId);
       throw new IllegalArgumentException("Cannot complete the task before the start date");
     }
 
     if (task.getProject().getStatus().equals(Status.COMPLETED) || task.getProject().getStatus()
         .equals(Status.CANCELLED)) {
+      logger.error(
+          "completeTask: Cannot complete a task in a completed or cancelled project. Project ID: {}",
+          task.getProject().getId());
       throw new IllegalStateException(
-          "Cannot complete the task in a completed or cancelled project");
+          "Cannot complete a task in a completed or cancelled project.");
     }
 
     task.setStatus(Status.COMPLETED);
@@ -365,25 +479,48 @@ public class TaskService {
 
     Task completedTask = taskRepository.save(task);
 
+    logger.info("completeTask: Task {} has been completed.", taskId);
     return convertToDto(completedTask);
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   @Transactional
   public void removeTaskFromProject(Long projectId, Long taskId) {
     if (projectId == null) {
-      throw new IllegalArgumentException("Project id cannot be null");
+      logger.error("removeTaskFromProject: Project id cannot be null.");
+      throw new IllegalArgumentException("Project id cannot be null.");
     }
 
     if (taskId == null) {
-      throw new IllegalArgumentException("Task id cannot be null");
+      logger.error("removeTaskFromProject: Task id cannot be null.");
+      throw new IllegalArgumentException("Task id cannot be null.");
     }
 
     Project project = projectRepository.findById(projectId)
-        .orElseThrow(
-            () -> new ProjectNotFoundException("Project not found with ID: " + projectId));
+        .orElseThrow(() -> {
+          logger.error("removeTaskFromProject: Project not found with ID: {}", projectId);
+          return new ProjectNotFoundException("Project not found.");
+        });
+
+    if (project.getStatus().equals(Status.CANCELLED) || project.getStatus()
+        .equals(Status.COMPLETED)) {
+      logger.error(
+          "removeTaskFromProject: Cannot remove a task from a completed or cancelled project. Project ID: {}",
+          projectId);
+      throw new IllegalStateException(
+          "Cannot remove a task from a completed or cancelled project.");
+    }
 
     Task task = project.getTasks().stream().filter(t -> t.getId().equals(taskId)).findFirst()
-        .orElseThrow(() -> new TaskNotFoundException("Task not found with ID: " + taskId));
+        .orElseThrow(() -> {
+          logger.error("removeTaskFromProject: Task not found with ID: {}", taskId);
+          return new TaskNotFoundException("Task not found.");
+        });
+
+    if (task.getStatus().equals(Status.COMPLETED)) {
+      logger.error("removeTaskFromProject: Cannot remove a completed task. Task ID: {}", taskId);
+      throw new IllegalStateException("Cannot remove a completed task.");
+    }
 
     User user = task.getAssignedUser();
 
@@ -395,7 +532,9 @@ public class TaskService {
     project.getTasks().remove(task);
     projectRepository.save(project);
 
-    task.setStatus(Status.CANCELLED);
-    taskRepository.save(task);
+    taskRepository.delete(task);
+
+    logger.info("removeTaskFromProject: Task with ID: {} has been removed from project with ID: {}",
+        taskId, projectId);
   }
 }
