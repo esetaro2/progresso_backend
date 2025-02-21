@@ -786,16 +786,6 @@ public class ProjectService {
           "At least one task is not completed. Please complete or delete the incomplete tasks before proceeding.");
     }
 
-    if (project.getTeam() == null) {
-      logger.error("completeProject: No team assigned to the project. Project ID: {}", projectId);
-      throw new IllegalStateException("No team assigned to the project.");
-    }
-
-    if (project.getTeam().getActive()) {
-      project.getTeam().setActive(false);
-      teamRepository.save(project.getTeam());
-    }
-
     project.setStatus(Status.COMPLETED);
     project.setCompletionDate(LocalDate.now());
 
@@ -839,11 +829,6 @@ public class ProjectService {
     }
 
     commentRepository.deleteAllById(commentsToRemove);
-
-    if (project.getTeam() != null && project.getTeam().getActive()) {
-      project.getTeam().setActive(false);
-      teamRepository.save(project.getTeam());
-    }
 
     Project updatedProject = projectRepository.save(project);
 
