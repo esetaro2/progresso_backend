@@ -237,7 +237,7 @@ public class TaskService {
 
     if (!user.getRole().equals(Role.TEAMMEMBER)) {
       logger.error("createAndAssignTask: This user is not a team member: {}.", user.getUsername());
-      throw new InvalidRoleException("This user is not a team member: " + user.getUsername() + ".");
+      throw new InvalidRoleException("This user is not a team member: " + user.getUsername());
     }
 
     if (!project.getTeam().getTeamMembers().contains(user)) {
@@ -419,7 +419,7 @@ public class TaskService {
       logger.error("reassignTaskToTeamMember: This user is not a team member: {}.",
           newUser.getUsername());
       throw new InvalidRoleException(
-          "This user is not a team member: " + newUser.getUsername() + ".");
+          "This user is not a team member: " + newUser.getUsername());
     }
 
     User oldUser = task.getAssignedUser();

@@ -78,6 +78,14 @@ public class ProjectService {
   }
 
   public Priority updateProjectPriority(Project project) {
+    if (project.getStatus().equals(Status.COMPLETED) || project.getStatus()
+        .equals(Status.CANCELLED)) {
+      logger.info("updateProjectPriority: Project ID: {} with status {} priority updated to {}",
+          project.getId(),
+          project.getStatus(), Priority.LOW);
+      return Priority.LOW;
+    }
+
     LocalDate currentDate = LocalDate.now();
     LocalDate startDate = project.getStartDate();
     LocalDate dueDate = project.getDueDate();
@@ -89,7 +97,7 @@ public class ProjectService {
 
     Priority priority = Priority.LOW;
 
-    if (!currentDate.isBefore(startDate)) {
+    if (currentDate.isAfter(startDate)) {
       long daysRemaining = ChronoUnit.DAYS.between(currentDate, dueDate);
 
       if (daysRemaining <= 7) {
@@ -99,15 +107,14 @@ public class ProjectService {
       }
     }
 
-    logger.info("updateProjectPriority: Project ID: {} priority updated to {}", project.getId(),
+    logger.info("updateProjectPriority: Project ID: {} with status {} priority updated to {}",
+        project.getId(), project.getStatus(),
         priority);
     return priority;
   }
 
   private Page<ProjectDto> getProjectsDto(Page<Project> projectsPage) {
-    projectsPage.getContent().stream().filter(
-            project -> !project.getStatus().equals(Status.CANCELLED) && !project.getStatus()
-                .equals(Status.COMPLETED))
+    projectsPage.getContent()
         .forEach(project -> project.setPriority(updateProjectPriority(project)));
 
     Page<ProjectDto> page = projectsPage.map(this::convertToDto);
@@ -412,7 +419,7 @@ public class ProjectService {
       logger.error("createProject: User {} is not a project manager.",
           projectManager.getUsername());
       throw new InvalidRoleException(
-          "User is not a project manager: " + projectManager.getUsername() + ".");
+          "User is not a project manager: " + projectManager.getUsername());
     }
 
     if (!projectManager.getActive()) {
@@ -592,7 +599,7 @@ public class ProjectService {
       logger.error("updateProjectManager: User {} is not a project manager.",
           projectManager.getUsername());
       throw new InvalidRoleException(
-          "User is not a project manager: " + projectManager.getUsername() + ".");
+          "User is not a project manager: " + projectManager.getUsername());
     }
 
     if (projectRepository.countByProjectManagerAndStatusNotIn(projectManager,

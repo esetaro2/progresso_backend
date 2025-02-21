@@ -126,7 +126,7 @@ public class AuthService {
           logger.error("authenticateUser: User not found with username: {}",
               loginDto.getUsername());
           return new UserNotFoundException(
-              "User not found with username: " + loginDto.getUsername() + ".");
+              "User not found with username: " + loginDto.getUsername());
         });
 
     if (!user.getActive()) {
@@ -137,7 +137,7 @@ public class AuthService {
     if (!passwordEncoder.matches(loginDto.getPassword(), user.getPassword())) {
       logger.error("authenticateUser: Invalid password for username: {}", loginDto.getUsername());
       throw new InvalidPasswordException(
-          "Invalid password for username: " + loginDto.getUsername() + ".");
+          "Invalid password for username: " + loginDto.getUsername());
     }
 
     String token = jwtUtil.generateToken(user);
@@ -153,7 +153,7 @@ public class AuthService {
     User user = userRepository.findByUsername(username)
         .orElseThrow(() -> {
           logger.error("logout: User not found with username: {}", username);
-          return new UserNotFoundException("User not found with username: " + username + ".");
+          return new UserNotFoundException("User not found with username: " + username);
         });
 
     Integer version = incrementTokenVersion(user.getTokenVersion());

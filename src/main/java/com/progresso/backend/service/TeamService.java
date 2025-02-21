@@ -366,7 +366,7 @@ public class TeamService {
         logger.error("addMembersToTeam: Team {} already has member {}.", team.getName(),
             member.getUsername());
         throw new IllegalArgumentException(
-            "This team already has this member: " + member.getUsername() + ".");
+            "This team already has this member: " + member.getUsername());
       }
 
       if (!team.getActive()) {
