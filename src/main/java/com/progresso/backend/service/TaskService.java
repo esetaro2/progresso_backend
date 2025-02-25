@@ -177,6 +177,13 @@ public class TaskService {
       throw new IllegalStateException("Cannot create a task for a completed or cancelled project.");
     }
 
+    if (project.getTeam() != null && !project.getTeam().getActive()) {
+      logger.error(
+          "createAndAssignTask: Cannot assign task for members in an inactive team. Project ID: {}, Team ID: {}",
+          project.getId(), project.getTeam().getId());
+      throw new IllegalStateException("Cannot assign task for members in an inactive team.");
+    }
+
     if (taskDto.getStartDate().isBefore(LocalDate.now())) {
       logger.error("createAndAssignTask: Start date must be today or in the future. StartDate: {}",
           taskDto.getStartDate());
@@ -240,7 +247,7 @@ public class TaskService {
       throw new InvalidRoleException("This user is not a team member: " + user.getUsername());
     }
 
-    if (!project.getTeam().getTeamMembers().contains(user)) {
+    if (project.getTeam() != null && !project.getTeam().getTeamMembers().contains(user)) {
       logger.error("createAndAssignTask: User {} not found in this team.", user.getUsername());
       throw new IllegalArgumentException("User " + user.getUsername() + " not found in this team.");
     }
@@ -396,6 +403,13 @@ public class TaskService {
           task.getProject().getId());
       throw new IllegalStateException(
           "Cannot reassign a task in a completed or cancelled project.");
+    }
+
+    if (task.getProject().getTeam() != null && !task.getProject().getTeam().getActive()) {
+      logger.error(
+          "reassignTaskToTeamMember: Cannot reassign task because the team is inactive. Task ID: {}, Project ID: {}, Team ID: {}",
+          task.getId(), task.getProject().getId(), task.getProject().getTeam().getId());
+      throw new IllegalStateException("Cannot reassign task because the team is inactive.");
     }
 
     User newUser = userRepository.findById(userId)

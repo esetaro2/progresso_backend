@@ -18,69 +18,71 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserRegistrationDto {
 
-  @NotBlank(message = "The first name cannot be empty.")
+  @NotBlank(message = "First name cannot be empty. Please provide the first name.")
   @Size(max = 50, message = "The first name must be between 2 and 50 characters.")
   @Pattern(
-      regexp = "^[a-zA-ZÀ-ÿ\\s]+$",
-      message = "The first name can only contain letters and spaces.")
+      regexp = "^\\S[a-zA-ZÀ-ÿ\\s]+$",
+      message = "First name cannot start with a space. It can only contain letters and spaces.")
   private String firstName;
 
-  @NotBlank(message = "The last name cannot be empty.")
-  @Size(max = 50, message = "The last name must be between 2 and 50 characters.")
+  @NotBlank(message = "Last name cannot be empty. Please provide the last name.")
+  @Size(max = 50, message = "Last name must be between 2 and 50 characters.")
   @Pattern(
-      regexp = "^[a-zA-ZÀ-ÿ\\s]+$",
-      message = "The last name can only contain letters and spaces.")
+      regexp = "^\\S[a-zA-ZÀ-ÿ\\s]+$",
+      message = "Last name cannot start with a space. It can only contain letters and spaces.")
   private String lastName;
 
-  @Past(message = "The birth date must be in the past.")
+  @Past(message = "Birth date must be in the past.")
   @Age(message = "User must be at least 18 years old.")
   private LocalDate birthDate;
 
-  @NotBlank(message = "The phone number cannot be empty.")
+  @NotBlank(message = "Phone number cannot be empty. Please provide the phone number.")
   private String phoneNumber;
 
-  @NotBlank(message = "The street address cannot be empty.")
+  @NotBlank(message = "Street address cannot be empty. Please provide the street address.")
   @Size(max = 100, message = "The street address must not exceed 100 characters.")
   @Pattern(
-      regexp = "^[a-zA-Z0-9\\s,.-]+$",
-      message = "The street address contains invalid characters.")
+      regexp = "^\\S[a-zA-Z0-9\\s,.-]+$",
+      message = "Street address cannot start with a space and must contain valid characters.")
   private String streetAddress;
 
-  @NotBlank(message = "The city cannot be empty.")
+  @NotBlank(message = "City cannot be empty. Please provide the city name.")
   @Size(max = 50, message = "The city name must not exceed 50 characters.")
   @Pattern(
-      regexp = "^[a-zA-ZÀ-ÿ\\s]+$",
-      message = "The city name can only contain letters and spaces.")
+      regexp = "^\\S[a-zA-ZÀ-ÿ\\s]+$",
+      message = "City name cannot start with a space. It can only contain letters and spaces.")
   private String city;
 
-  @NotBlank(message = "The state/province/region cannot be empty.")
-  @Size(max = 50, message = "The state/province/region name must not exceed 50 characters.")
+  @NotBlank(message = "State/province/region cannot be empty. "
+      + "Please provide the state/province/region.")
+  @Size(max = 50, message = "State/province/region name must not exceed 50 characters.")
   @Pattern(
-      regexp = "^[a-zA-ZÀ-ÿ\\s]+$",
-      message = "The state/province/region name can only contain letters and spaces.")
+      regexp = "^\\S[a-zA-ZÀ-ÿ\\s]+$",
+      message = "State/province/region name cannot start with a space. "
+          + "It can only contain letters and spaces.")
   private String stateProvinceRegion;
 
-  @NotBlank(message = "The country cannot be empty.")
-  @Size(max = 50, message = "The country name must not exceed 50 characters.")
+  @NotBlank(message = "Country cannot be empty. Please provide the country name.")
+  @Size(max = 50, message = "Country name must not exceed 50 characters.")
   @Pattern(
-      regexp = "^[a-zA-ZÀ-ÿ\\s]+$",
-      message = "The country name can only contain letters and spaces.")
+      regexp = "^\\S[a-zA-ZÀ-ÿ\\s]+$",
+      message = "Country name cannot start with a space. It can only contain letters and spaces.")
   private String country;
 
-  @NotBlank(message = "The zip code cannot be empty.")
+  @NotBlank(message = "Zip code cannot be empty. Please provide the zip code.")
   @Pattern(
       regexp = "^[0-9]{5}(?:-[0-9]{4})?$",
-      message = "The zip code must be in a valid US format (e.g., 12345 or 12345-6789).")
+      message = "Zip code must be in a valid US format (e.g., 12345 or 12345-6789).")
   private String zipCode;
 
-  @NotBlank(message = "The email cannot be empty.")
-  @Email
+  @NotBlank(message = "Email cannot be empty. Please provide the email address.")
+  @Email(message = "Email must be a valid email address.")
   @Pattern(
       regexp = "^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\\.(com|org|net|edu|gov))$",
       message = "Email must belong to a valid domain such as example.com or domain.org.")
   private String email;
 
-  @NotBlank(message = "The role cannot be empty.")
+  @NotBlank(message = "Role cannot be empty. Please provide the role.")
   private String role;
 
   public User toEntity(User user) {

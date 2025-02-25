@@ -80,10 +80,7 @@ public class ProjectService {
   public Priority updateProjectPriority(Project project) {
     if (project.getStatus().equals(Status.COMPLETED) || project.getStatus()
         .equals(Status.CANCELLED)) {
-      logger.info("updateProjectPriority: Project ID: {} with status {} priority updated to {}",
-          project.getId(),
-          project.getStatus(), Priority.LOW);
-      return Priority.LOW;
+      return project.getPriority();
     }
 
     LocalDate currentDate = LocalDate.now();
@@ -218,7 +215,7 @@ public class ProjectService {
       logger.warn(
           "findAllProjectsWithFilters: No projects found with the given filters. Status: {}, Priority: {}, Name: {}",
           statusEnum, priorityEnum, name);
-      throw new NoDataFoundException("No projects found with the given filters.");
+      throw new NoDataFoundException("No projects found.");
     } else {
       logger.info(
           "findAllProjectsWithFilters: Retrieved {} projects with the given filters. Status: {}, Priority: {}, Name: {}",
@@ -253,7 +250,7 @@ public class ProjectService {
           "findProjectsByProjectManagerUsernameAndFilters: No projects found with the given filters for project manager: {}. Status: {}, Priority: {}, Name: {}",
           managerUsername, statusEnum, priorityEnum, name);
       throw new NoDataFoundException(
-          "No projects found with the given filters.");
+          "No projects found.");
     } else {
       logger.info(
           "findProjectsByProjectManagerUsernameAndFilters: Retrieved {} projects with the given filters for project manager: {}. Status: {}, Priority: {}, Name: {}",
@@ -289,7 +286,7 @@ public class ProjectService {
           "findProjectsByTeamMemberUsernameAndFilters: No projects found with the given filters for team member: {}. Status: {}, Priority: {}, Name: {}",
           teamMemberUsername, statusEnum, priorityEnum, name);
       throw new NoDataFoundException(
-          "No projects found with the given filters.");
+          "No projects found.");
     } else {
       logger.info(
           "findProjectsByTeamMemberUsernameAndFilters: Retrieved {} projects with the given filters for team member: {}. Status: {}, Priority: {}, Name: {}",
@@ -442,8 +439,8 @@ public class ProjectService {
     project.setProjectManager(projectManager);
     project.setStartDate(projectDto.getStartDate());
     project.setDueDate(projectDto.getDueDate());
-    project.setPriority(updateProjectPriority(project));
     project.setStatus(Status.NOT_STARTED);
+    project.setPriority(updateProjectPriority(project));
 
     Project savedProject = projectRepository.save(project);
     logger.info("createProject: Created project with name: {}", finalName);
@@ -734,13 +731,12 @@ public class ProjectService {
     }
 
     currTeam.getTeamMembers().forEach(tm -> {
-      List<Task> tasksToRemove = tm.getAssignedTasks().stream()
+      List<Task> tasksToUpdate = tm.getAssignedTasks().stream()
           .filter(task -> task.getStatus().equals(Status.IN_PROGRESS))
           .toList();
 
-      tasksToRemove.forEach(task -> {
+      tasksToUpdate.forEach(task -> {
         task.setAssignedUser(null);
-        tm.getAssignedTasks().remove(task);
         taskRepository.save(task);
       });
 
@@ -783,8 +779,7 @@ public class ProjectService {
     }
 
     boolean hasIncompleteTasks = project.getTasks().stream()
-        .anyMatch(task -> !task.getStatus().equals(Status.CANCELLED) && !task.getStatus()
-            .equals(Status.COMPLETED));
+        .anyMatch(task -> task.getStatus().equals(Status.IN_PROGRESS));
 
     if (hasIncompleteTasks) {
       logger.error("completeProject: At least one task is not completed. Project ID: {}",
@@ -794,6 +789,7 @@ public class ProjectService {
     }
 
     project.setStatus(Status.COMPLETED);
+    project.setPriority(Priority.LOW);
     project.setCompletionDate(LocalDate.now());
 
     Project updatedProject = projectRepository.save(project);
@@ -815,10 +811,10 @@ public class ProjectService {
           return new ProjectNotFoundException("Project not found.");
         });
 
-    if (List.of(Status.COMPLETED, Status.CANCELLED).contains(project.getStatus())) {
-      logger.error("removeProject: Cannot remove a cancelled or completed project. Project ID: {}",
+    if (project.getStatus().equals(Status.CANCELLED)) {
+      logger.error("removeProject: Cannot remove a cancelled project. Project ID: {}",
           projectId);
-      throw new IllegalArgumentException("Cannot remove a cancelled or completed project.");
+      throw new IllegalArgumentException("Cannot remove a cancelled project.");
     }
 
     project.setStatus(Status.CANCELLED);
@@ -837,6 +833,7 @@ public class ProjectService {
 
     commentRepository.deleteAllById(commentsToRemove);
 
+    project.setPriority(Priority.LOW);
     Project updatedProject = projectRepository.save(project);
 
     logger.info("removeProject: Project with ID: {} has been cancelled and removed.", projectId);

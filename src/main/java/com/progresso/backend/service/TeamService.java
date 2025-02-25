@@ -311,6 +311,12 @@ public class TeamService {
           return new TeamNotFoundException("Team not found.");
         });
 
+    if (!team.getActive()) {
+      logger.error("updateTeam: Cannot update an inactive team. Team ID: {}, Team Name: {}",
+          team.getId(), team.getName());
+      throw new IllegalArgumentException("Cannot update an inactive team.");
+    }
+
     String finalName = newName;
     if (team.getName().equals(finalName)) {
       int counter = 1;
@@ -352,13 +358,20 @@ public class TeamService {
           return new TeamNotFoundException("Team not found.");
         });
 
+    if (!team.getActive()) {
+      logger.error("addMembersToTeam: Team {} is not active.", team.getName());
+      throw new IllegalStateException("This team is not active.");
+    }
+
     List<User> users = userRepository.findAllById(userIds);
 
     if (users.size() != userIds.size()) {
-      logger.error(
-          "addMembersToTeam: One or more users not found in the provided list of user IDs: {}",
-          userIds);
-      throw new UserNotFoundException("One or more users not found.");
+      List<Long> foundIds = users.stream().map(User::getId).toList();
+      List<Long> notFoundIds = new ArrayList<>(userIds);
+      notFoundIds.removeAll(foundIds);
+      logger.error("addMembersToTeam: Some users have not been found. Not found IDs: {}",
+          notFoundIds);
+      throw new UserNotFoundException("Some users have not been found.");
     }
 
     for (User member : users) {
@@ -367,11 +380,6 @@ public class TeamService {
             member.getUsername());
         throw new IllegalArgumentException(
             "This team already has this member: " + member.getUsername());
-      }
-
-      if (!team.getActive()) {
-        logger.error("addMembersToTeam: Team {} is not active.", team.getName());
-        throw new IllegalStateException("This team is not active.");
       }
 
       if (!member.getActive()) {
@@ -420,6 +428,11 @@ public class TeamService {
           logger.error("removeMembersFromTeam: Team not found with ID: {}", teamId);
           return new TeamNotFoundException("Team not found.");
         });
+
+    if (!team.getActive()) {
+      logger.error("removeMembersFromTeam: Team {} is not active.", team.getName());
+      throw new IllegalStateException("This team is not active.");
+    }
 
     List<User> users = userRepository.findAllById(userIds);
 
@@ -483,7 +496,8 @@ public class TeamService {
         });
 
     boolean hasActiveProjects = team.getProjects().stream()
-        .anyMatch(project -> !project.getStatus().equals(Status.COMPLETED));
+        .anyMatch(project -> !project.getStatus().equals(Status.COMPLETED) && !project.getStatus()
+            .equals(Status.CANCELLED));
 
     if (hasActiveProjects) {
       logger.error("deleteTeam: Cannot delete a team with active projects. Team ID: {}", teamId);

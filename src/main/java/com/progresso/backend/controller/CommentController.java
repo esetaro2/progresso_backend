@@ -32,89 +32,12 @@ public class CommentController {
     this.commentService = commentService;
   }
 
-  @GetMapping("/{id}")
-  public ResponseEntity<CommentDto> getCommentById(@PathVariable Long id) {
-    CommentDto commentDto = commentService.getCommentById(id);
-    return ResponseEntity.ok(commentDto);
-  }
-
-  @GetMapping("/project/{projectId}/root-comments")
-  public ResponseEntity<Page<CommentDto>> findByProjectIdAndParentIsNull(
-      @PathVariable Long projectId, Pageable pageable) {
-    Page<CommentDto> comments = commentService.findByProjectIdAndParentIsNull(projectId, pageable);
-    return ResponseEntity.ok(comments);
-  }
-
-  @GetMapping("/parent/{parentId}/replies")
-  public ResponseEntity<Page<CommentDto>> findByParentId(@PathVariable Long parentId,
-      Pageable pageable) {
-    Page<CommentDto> comments = commentService.findByParentId(parentId, pageable);
-    return ResponseEntity.ok(comments);
-  }
-
+  @PreAuthorize("hasAuthority('ADMIN') or "
+      + "@commentService.isManagerOrMemberOfProject(#projectId, authentication.name)")
   @GetMapping("/project/{projectId}/comments")
   public ResponseEntity<Page<CommentDto>> findByProjectId(@PathVariable Long projectId,
       Pageable pageable) {
     Page<CommentDto> comments = commentService.findByProjectId(projectId, pageable);
-    return ResponseEntity.ok(comments);
-  }
-
-  @GetMapping("/user/{userId}/comments")
-  public ResponseEntity<Page<CommentDto>> findByUserId(@PathVariable Long userId,
-      Pageable pageable) {
-    Page<CommentDto> comments = commentService.findByUserId(userId, pageable);
-    return ResponseEntity.ok(comments);
-  }
-
-  @GetMapping("/project/{projectId}/content")
-  public ResponseEntity<Page<CommentDto>> findByProjectIdAndContentContaining(
-      @PathVariable Long projectId, @RequestParam String content, Pageable pageable) {
-    Page<CommentDto> comments = commentService.findByProjectIdAndContentContaining(projectId,
-        content, pageable);
-    return ResponseEntity.ok(comments);
-  }
-
-  @GetMapping("/project/{projectId}/active-root-comments")
-  public ResponseEntity<Page<CommentDto>> findRootCommentsByProjectId(@PathVariable Long projectId,
-      Pageable pageable) {
-    Page<CommentDto> comments = commentService.findRootCommentsByProjectId(projectId, pageable);
-    return ResponseEntity.ok(comments);
-  }
-
-  @GetMapping("/parent/{parentId}/active-replies")
-  public ResponseEntity<Page<CommentDto>> findRepliesByParentId(@PathVariable Long parentId,
-      Pageable pageable) {
-    Page<CommentDto> comments = commentService.findRepliesByParentId(parentId, pageable);
-    return ResponseEntity.ok(comments);
-  }
-
-  @GetMapping("/project/{projectId}/user/{userId}/comments")
-  public ResponseEntity<Page<CommentDto>> findCommentsByUserIdAndProjectId(
-      @PathVariable Long projectId, @PathVariable Long userId, Pageable pageable) {
-    Page<CommentDto> comments = commentService.findCommentsByUserIdAndProjectId(projectId, userId,
-        pageable);
-    return ResponseEntity.ok(comments);
-  }
-
-  @GetMapping("/project/{projectId}/active-comments")
-  public ResponseEntity<Page<CommentDto>> findActiveCommentsByProjectId(
-      @PathVariable Long projectId, Pageable pageable) {
-    Page<CommentDto> comments = commentService.findActiveCommentsByProjectId(projectId, pageable);
-    return ResponseEntity.ok(comments);
-  }
-
-  @GetMapping("/user/{userId}/active-comments")
-  public ResponseEntity<Page<CommentDto>> findActiveCommentsByUserId(@PathVariable Long userId,
-      Pageable pageable) {
-    Page<CommentDto> comments = commentService.findActiveCommentsByUserId(userId, pageable);
-    return ResponseEntity.ok(comments);
-  }
-
-  @GetMapping("/project/{projectId}/active-comments/content")
-  public ResponseEntity<Page<CommentDto>> findActiveCommentsByProjectIdAndContentContaining(
-      @PathVariable Long projectId, @RequestParam String content, Pageable pageable) {
-    Page<CommentDto> comments = commentService.findActiveCommentsByProjectIdAndContentContaining(
-        projectId, content, pageable);
     return ResponseEntity.ok(comments);
   }
 

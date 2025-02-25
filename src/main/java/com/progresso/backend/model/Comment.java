@@ -1,6 +1,5 @@
 package com.progresso.backend.model;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -9,9 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import java.time.LocalDateTime;
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,7 +23,7 @@ public class Comment {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(nullable = false)
+  @Column(nullable = false, length = 500)
   private String content;
 
   @Column(nullable = false)
@@ -42,10 +39,6 @@ public class Comment {
 
   @ManyToOne(fetch = FetchType.EAGER)
   private Comment parent;
-
-  @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true,
-      fetch = FetchType.EAGER)
-  private List<Comment> replies;
 
   @Column(nullable = false)
   private Boolean modified;

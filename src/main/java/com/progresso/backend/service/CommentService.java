@@ -1,6 +1,7 @@
 package com.progresso.backend.service;
 
 import com.progresso.backend.dto.CommentDto;
+import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.exception.CommentNotFoundException;
 import com.progresso.backend.exception.NoDataFoundException;
@@ -15,7 +16,6 @@ import com.progresso.backend.repository.ProjectRepository;
 import com.progresso.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,17 +46,33 @@ public class CommentService {
     commentDto.setContent(comment.getContent());
     commentDto.setCreationDate(comment.getCreationDate());
     commentDto.setUserId(comment.getUser().getId());
+    commentDto.setUserFirstName(comment.getUser().getFirstName());
+    commentDto.setUserLastName(comment.getUser().getLastName());
+    commentDto.setUserUsername(comment.getUser().getUsername());
     commentDto.setProjectId(comment.getProject().getId());
-    commentDto.setParentId(comment.getParent() != null ? comment.getParent().getId() : null);
     commentDto.setModified(comment.getModified());
     commentDto.setModifiedDate(comment.getModifiedDate());
     commentDto.setDeleted(comment.getDeleted());
 
-    if (comment.getReplies() != null) {
-      List<CommentDto> repliesDto = comment.getReplies().stream()
-          .map(this::convertToDto).toList();
-      commentDto.setReplies(repliesDto);
-    }
+    commentDto.setParentId(comment.getParent() != null ? comment.getParent().getId() : null);
+    commentDto.setParentContent(
+        comment.getParent() != null ? comment.getParent().getContent() : null);
+    commentDto.setParentCreationDate(
+        comment.getParent() != null ? comment.getParent().getCreationDate() : null);
+    commentDto.setParentUserId(
+        comment.getParent() != null ? comment.getParent().getUser().getId() : null);
+    commentDto.setParentUserFirstName(
+        comment.getParent() != null ? comment.getParent().getUser().getFirstName() : null);
+    commentDto.setParentUserLastName(
+        comment.getParent() != null ? comment.getParent().getUser().getLastName() : null);
+    commentDto.setParentUserUsername(
+        comment.getParent() != null ? comment.getParent().getUser().getUsername() : null);
+    commentDto.setParentModified(
+        comment.getParent() != null ? comment.getParent().getModified() : null);
+    commentDto.setParentModifiedDate(
+        comment.getParent() != null ? comment.getParent().getModifiedDate() : null);
+    commentDto.setParentDeleted(
+        comment.getParent() != null ? comment.getParent().getDeleted() : null);
 
     return commentDto;
   }
@@ -83,8 +99,9 @@ public class CommentService {
         });
 
     Boolean isManagerOrMember = project.getProjectManager().getUsername().equals(username)
-        || project.getTeam().getTeamMembers().stream().map(User::getUsername)
-        .anyMatch(memberUsername -> memberUsername.equals(username));
+        || (project.getTeam() != null && project.getTeam().getTeamMembers().stream()
+        .map(User::getUsername)
+        .anyMatch(memberUsername -> memberUsername.equals(username)));
 
     logger.info(
         "isManagerOrMemberOfProject: User {} is {}a manager or member of the project with ID: {}",
@@ -111,73 +128,6 @@ public class CommentService {
     return isOwner;
   }
 
-  public CommentDto getCommentById(Long id) {
-    if (id == null) {
-      logger.error("getCommentById: Comment id cannot be null.");
-      throw new IllegalArgumentException("Comment id cannot be null.");
-    }
-
-    Comment comment = commentRepository.findById(id)
-        .orElseThrow(() -> {
-          logger.error("getCommentById: Comment not found with ID: {}", id);
-          return new CommentNotFoundException("Comment not found.");
-        });
-
-    logger.info("getCommentById: Retrieved comment with ID: {}", id);
-    return convertToDto(comment);
-  }
-
-  public Page<CommentDto> findByProjectIdAndParentIsNull(Long projectId, Pageable pageable) {
-    if (projectId == null) {
-      logger.error("findByProjectIdAndParentIsNull: Project id cannot be null.");
-      throw new IllegalArgumentException("Project id cannot be null.");
-    }
-
-    Project project = projectRepository.findById(projectId)
-        .orElseThrow(() -> {
-          logger.error("findByProjectIdAndParentIsNull: Project not found with ID: {}", projectId);
-          return new ProjectNotFoundException("Project not found.");
-        });
-
-    Page<Comment> comments = commentRepository.findByProjectIdAndParentIsNull(projectId, pageable);
-
-    if (comments.isEmpty()) {
-      logger.warn("findByProjectIdAndParentIsNull: No root comments found for project: {}",
-          project.getName());
-      throw new NoDataFoundException(
-          "No root comments found for project: " + project.getName() + ".");
-    }
-
-    logger.info(
-        "findByProjectIdAndParentIsNull: Retrieved {} root comments for project with ID: {}",
-        comments.getTotalElements(), projectId);
-    return comments.map(this::convertToDto);
-  }
-
-  public Page<CommentDto> findByParentId(Long parentId, Pageable pageable) {
-    if (parentId == null) {
-      logger.error("findByParentId: Parent id cannot be null.");
-      throw new IllegalArgumentException("Parent id cannot be null.");
-    }
-
-    commentRepository.findById(parentId)
-        .orElseThrow(() -> {
-          logger.error("findByParentId: Comment not found with ID: {}", parentId);
-          return new CommentNotFoundException("Comment not found.");
-        });
-
-    Page<Comment> comments = commentRepository.findByParentId(parentId, pageable);
-
-    if (comments.isEmpty()) {
-      logger.warn("findByParentId: No replies found for comment with ID: {}", parentId);
-      throw new NoDataFoundException("No replies found for this comment.");
-    }
-
-    logger.info("findByParentId: Retrieved {} replies for comment with ID: {}",
-        comments.getTotalElements(), parentId);
-    return comments.map(this::convertToDto);
-  }
-
   public Page<CommentDto> findByProjectId(Long projectId, Pageable pageable) {
     if (projectId == null) {
       logger.error("findByProjectId: Project id cannot be null.");
@@ -198,235 +148,6 @@ public class CommentService {
     }
 
     logger.info("findByProjectId: Retrieved {} comments for project with ID: {}",
-        comments.getTotalElements(), projectId);
-    return comments.map(this::convertToDto);
-  }
-
-  public Page<CommentDto> findByUserId(Long userId, Pageable pageable) {
-    if (userId == null) {
-      logger.error("findByUserId: User id cannot be null.");
-      throw new IllegalArgumentException("User id cannot be null.");
-    }
-
-    userRepository.findById(userId)
-        .orElseThrow(() -> {
-          logger.error("findByUserId: User not found with ID: {}", userId);
-          return new UserNotFoundException("User not found.");
-        });
-
-    Page<Comment> comments = commentRepository.findByUserId(userId, pageable);
-
-    if (comments.isEmpty()) {
-      logger.warn("findByUserId: No comments found for user with ID: {}", userId);
-      throw new NoDataFoundException("No comments found for this user.");
-    }
-
-    logger.info("findByUserId: Retrieved {} comments for user with ID: {}",
-        comments.getTotalElements(), userId);
-    return comments.map(this::convertToDto);
-  }
-
-  @SuppressWarnings("checkstyle:LineLength")
-  public Page<CommentDto> findByProjectIdAndContentContaining(Long projectId, String content,
-      Pageable pageable) {
-    if (projectId == null) {
-      logger.error("findByProjectIdAndContentContaining: Project id cannot be null.");
-      throw new IllegalArgumentException("Project id cannot be null.");
-    }
-
-    projectRepository.findById(projectId)
-        .orElseThrow(() -> {
-          logger.error("findByProjectIdAndContentContaining: Project not found with ID: {}",
-              projectId);
-          return new ProjectNotFoundException("Project not found.");
-        });
-
-    Page<Comment> comments = commentRepository.findByProjectIdAndContentContaining(projectId,
-        content, pageable);
-
-    if (comments.isEmpty()) {
-      logger.warn(
-          "findByProjectIdAndContentContaining: No comments found with the given content for project with ID: {}",
-          projectId);
-      throw new NoDataFoundException("No comments found with the given content.");
-    }
-
-    logger.info(
-        "findByProjectIdAndContentContaining: Retrieved {} comments with the given content for project with ID: {}",
-        comments.getTotalElements(), projectId);
-    return comments.map(this::convertToDto);
-  }
-
-  public Page<CommentDto> findRootCommentsByProjectId(Long projectId, Pageable pageable) {
-    if (projectId == null) {
-      logger.error("findRootCommentsByProjectId: Project id cannot be null.");
-      throw new IllegalArgumentException("Project id cannot be null.");
-    }
-
-    projectRepository.findById(projectId)
-        .orElseThrow(() -> {
-          logger.error("findRootCommentsByProjectId: Project not found with ID: {}", projectId);
-          return new ProjectNotFoundException("Project not found.");
-        });
-
-    Page<Comment> comments = commentRepository.findRootCommentsByProjectId(projectId, pageable);
-
-    if (comments.isEmpty()) {
-      logger.warn("findRootCommentsByProjectId: No root comments found for project with ID: {}",
-          projectId);
-      throw new NoDataFoundException("No root comments found for this project.");
-    }
-
-    logger.info("findRootCommentsByProjectId: Retrieved {} root comments for project with ID: {}",
-        comments.getTotalElements(), projectId);
-    return comments.map(this::convertToDto);
-  }
-
-  public Page<CommentDto> findRepliesByParentId(Long parentId, Pageable pageable) {
-    if (parentId == null) {
-      logger.error("findRepliesByParentId: Parent id cannot be null.");
-      throw new IllegalArgumentException("Parent id cannot be null.");
-    }
-
-    commentRepository.findById(parentId)
-        .orElseThrow(() -> {
-          logger.error("findRepliesByParentId: Comment not found with ID: {}", parentId);
-          return new CommentNotFoundException("Comment not found.");
-        });
-
-    Page<Comment> comments = commentRepository.findRepliesByParentId(parentId, pageable);
-
-    if (comments.isEmpty()) {
-      logger.warn("findRepliesByParentId: No replies found for comment with ID: {}", parentId);
-      throw new NoDataFoundException("No replies found for this comment.");
-    }
-
-    logger.info("findRepliesByParentId: Retrieved {} replies for comment with ID: {}",
-        comments.getTotalElements(), parentId);
-    return comments.map(this::convertToDto);
-  }
-
-  public Page<CommentDto> findCommentsByUserIdAndProjectId(Long projectId, Long userId,
-      Pageable pageable) {
-    if (projectId == null) {
-      logger.error("findCommentsByUserIdAndProjectId: Project id cannot be null.");
-      throw new IllegalArgumentException("Project id cannot be null.");
-    }
-
-    if (userId == null) {
-      logger.error("findCommentsByUserIdAndProjectId: User id cannot be null.");
-      throw new IllegalArgumentException("User id cannot be null.");
-    }
-
-    projectRepository.findById(projectId)
-        .orElseThrow(() -> {
-          logger.error("findCommentsByUserIdAndProjectId: Project not found with ID: {}",
-              projectId);
-          return new ProjectNotFoundException("Project not found.");
-        });
-
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> {
-          logger.error("findCommentsByUserIdAndProjectId: User not found with ID: {}", userId);
-          return new UserNotFoundException("User not found.");
-        });
-
-    Page<Comment> comments = commentRepository.findCommentsByUserIdAndProjectId(userId, projectId,
-        pageable);
-
-    if (comments.isEmpty()) {
-      logger.warn(
-          "findCommentsByUserIdAndProjectId: No comments found by user {} in project with ID: {}",
-          user.getUsername(), projectId);
-      throw new NoDataFoundException(
-          "No comments found by " + user.getUsername() + " in this project.");
-    }
-
-    logger.info(
-        "findCommentsByUserIdAndProjectId: Retrieved {} comments by user {} in project with ID: {}",
-        comments.getTotalElements(), user.getUsername(), projectId);
-    return comments.map(this::convertToDto);
-  }
-
-  public Page<CommentDto> findActiveCommentsByProjectId(Long projectId, Pageable pageable) {
-    if (projectId == null) {
-      logger.error("findActiveCommentsByProjectId: Project id cannot be null.");
-      throw new IllegalArgumentException("Project id cannot be null.");
-    }
-
-    projectRepository.findById(projectId)
-        .orElseThrow(() -> {
-          logger.error("findActiveCommentsByProjectId: Project not found with ID: {}", projectId);
-          return new ProjectNotFoundException("Project not found.");
-        });
-
-    Page<Comment> comments = commentRepository.findActiveCommentsByProjectId(projectId, pageable);
-
-    if (comments.isEmpty()) {
-      logger.warn("findActiveCommentsByProjectId: No active comments found for project with ID: {}",
-          projectId);
-      throw new NoDataFoundException("No active comments found for this project.");
-    }
-
-    logger.info(
-        "findActiveCommentsByProjectId: Retrieved {} active comments for project with ID: {}",
-        comments.getTotalElements(), projectId);
-    return comments.map(this::convertToDto);
-  }
-
-  public Page<CommentDto> findActiveCommentsByUserId(Long userId, Pageable pageable) {
-    if (userId == null) {
-      logger.error("findActiveCommentsByUserId: User id cannot be null.");
-      throw new IllegalArgumentException("User id cannot be null.");
-    }
-
-    userRepository.findById(userId)
-        .orElseThrow(() -> {
-          logger.error("findActiveCommentsByUserId: User not found with ID: {}", userId);
-          return new UserNotFoundException("User not found.");
-        });
-
-    Page<Comment> comments = commentRepository.findActiveCommentsByUserId(userId, pageable);
-
-    if (comments.isEmpty()) {
-      logger.warn("findActiveCommentsByUserId: No active comments found for user with ID: {}",
-          userId);
-      throw new NoDataFoundException("No active comments found for this user.");
-    }
-
-    logger.info("findActiveCommentsByUserId: Retrieved {} active comments for user with ID: {}",
-        comments.getTotalElements(), userId);
-    return comments.map(this::convertToDto);
-  }
-
-  @SuppressWarnings("checkstyle:LineLength")
-  public Page<CommentDto> findActiveCommentsByProjectIdAndContentContaining(Long projectId,
-      String content, Pageable pageable) {
-    if (projectId == null) {
-      logger.error("findActiveCommentsByProjectIdAndContentContaining: Project id cannot be null.");
-      throw new IllegalArgumentException("Project id cannot be null.");
-    }
-
-    projectRepository.findById(projectId)
-        .orElseThrow(() -> {
-          logger.error(
-              "findActiveCommentsByProjectIdAndContentContaining: Project not found with ID: {}",
-              projectId);
-          return new ProjectNotFoundException("Project not found.");
-        });
-
-    Page<Comment> comments = commentRepository.findActiveCommentsByProjectIdAndContentContaining(
-        projectId, content, pageable);
-
-    if (comments.isEmpty()) {
-      logger.warn(
-          "findActiveCommentsByProjectIdAndContentContaining: No comments found for project with ID: {} with the given content.",
-          projectId);
-      throw new NoDataFoundException("No comments found for this project with the given content.");
-    }
-
-    logger.info(
-        "findActiveCommentsByProjectIdAndContentContaining: Retrieved {} comments with the given content for project with ID: {}",
         comments.getTotalElements(), projectId);
     return comments.map(this::convertToDto);
   }
@@ -457,7 +178,7 @@ public class CommentService {
       throw new IllegalArgumentException("Cannot comment on an inactive project.");
     }
 
-    if (!isUserInProject(user, project)) {
+    if (!user.getRole().equals(Role.ADMIN) && !isUserInProject(user, project)) {
       logger.error("createComment: User {} is not working on project with ID: {}",
           user.getUsername(), project.getId());
       throw new UserNotActiveException(
@@ -469,25 +190,24 @@ public class CommentService {
     comment.setCreationDate(LocalDateTime.now());
     comment.setUser(user);
     comment.setProject(project);
-    comment.setParent(
-        commentDto.getParentId() != null ? commentRepository.findById(commentDto.getParentId())
-            .orElseThrow(() -> {
-              logger.error("createComment: Parent comment not found with ID: {}",
-                  commentDto.getParentId());
-              return new CommentNotFoundException("Parent comment not found.");
-            }) : null);
     comment.setModified(false);
     comment.setDeleted(false);
 
-    if (comment.getParent() != null && comment.getParent().getDeleted()) {
-      logger.error("createComment: Cannot reply to a deleted comment. Parent Comment ID: {}",
-          comment.getParent().getId());
-      throw new IllegalArgumentException("Cannot reply to a deleted comment.");
-    }
+    if (commentDto.getParentId() != null) {
+      Comment parentComment = commentRepository.findById(commentDto.getParentId())
+          .orElseThrow(() -> {
+            logger.error("createComment: Parent comment not found with ID: {}",
+                commentDto.getParentId());
+            return new CommentNotFoundException("Parent comment not found.");
+          });
 
-    if (comment.getParent() != null) {
-      comment.getParent().getReplies().add(comment);
-      commentRepository.save(comment.getParent());
+      if (parentComment.getDeleted()) {
+        logger.error("createComment: Cannot reply to a deleted comment. Parent Comment ID: {}",
+            parentComment.getId());
+        throw new IllegalArgumentException("Cannot reply to a deleted comment.");
+      }
+
+      comment.setParent(parentComment);
     }
 
     user.getComments().add(comment);
@@ -496,6 +216,7 @@ public class CommentService {
     Comment savedComment = commentRepository.save(comment);
     logger.info("createComment: Created comment with ID: {} for project with ID: {} by user: {}",
         savedComment.getId(), project.getId(), user.getUsername());
+
     return convertToDto(savedComment);
   }
 
