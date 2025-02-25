@@ -233,9 +233,18 @@ public class CommentService {
           return new CommentNotFoundException("Comment not found.");
         });
 
+    Project project = comment.getProject();
+
     if (comment.getDeleted()) {
       logger.error("updateComment: Cannot update a deleted comment. Comment ID: {}", commentId);
       throw new IllegalArgumentException("Cannot update a deleted comment.");
+    }
+
+    if (project.getStatus().equals(Status.COMPLETED) || project.getStatus()
+        .equals(Status.CANCELLED)) {
+      logger.error("updateComment: Cannot update a comment on an inactive project. Project ID: {}",
+          project.getId());
+      throw new IllegalArgumentException("Cannot update a comment on an inactive project.");
     }
 
     comment.setContent(newContent);
@@ -260,6 +269,15 @@ public class CommentService {
           logger.error("deleteComment: Comment not found with ID: {}", commentId);
           return new CommentNotFoundException("Comment not found.");
         });
+
+    Project project = comment.getProject();
+
+    if (project.getStatus().equals(Status.COMPLETED) || project.getStatus()
+        .equals(Status.CANCELLED)) {
+      logger.error("deleteComment: Cannot delete a comment on an inactive project. Project ID: {}",
+          project.getId());
+      throw new IllegalArgumentException("Cannot delete a comment on an inactive project.");
+    }
 
     if (comment.getDeleted()) {
       logger.error("deleteComment: This comment has already been deleted. Comment ID: {}",
