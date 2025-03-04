@@ -16,9 +16,10 @@ public class CommentDto {
 
   private Long id;
 
-  @NotBlank(message = "Content cannot be empty. Please provide some text for your comment.")
-  @Size(max = 500, message = "Content is too long. It must be between 1 and 500 characters.")
-  @Pattern(regexp = "^\\S.*", message = "Content cannot start with a space. "
+  @NotBlank(message = "Comment content cannot be empty. Please provide some text for your comment.")
+  @Size(max = 500, message = "Comment content is too long. "
+      + "It must be between 1 and 500 characters.")
+  @Pattern(regexp = "^\\S.*", message = "Comment content cannot start with a space. "
       + "Please remove the leading space.")
   private String content;
 

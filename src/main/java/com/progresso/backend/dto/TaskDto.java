@@ -29,13 +29,13 @@ public class TaskDto {
       + "Please remove the leading space.")
   private String description;
 
-  @NotNull(message = "Priority cannot be null. Please specify the priority.")
+  @NotNull(message = "Task priority cannot be null. Please specify the priority.")
   private String priority;
 
-  @NotNull(message = "Start date cannot be null. Please specify the start date.")
+  @NotNull(message = "Task start date cannot be null. Please specify the start date.")
   private LocalDate startDate;
 
-  @NotNull(message = "Due date cannot be null. Please specify the due date.")
+  @NotNull(message = "Task due date cannot be null. Please specify the due date.")
   private LocalDate dueDate;
 
   private LocalDate completionDate;

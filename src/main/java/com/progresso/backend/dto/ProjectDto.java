@@ -32,22 +32,32 @@ public class ProjectDto {
 
   private String priority;
 
-  @NotNull(message = "Start date cannot be null. Please specify the start date.")
+  @NotNull(message = "Project start date cannot be null. Please specify the start date.")
   private LocalDate startDate;
 
-  @NotNull(message = "Due date cannot be null. Please specify the due date.")
+  @NotNull(message = "Project due date cannot be null. Please specify the due date.")
   private LocalDate dueDate;
 
   private LocalDate completionDate;
+
+  private Long completionPercentage;
 
   private String status;
 
   @NotNull(message = "Project manager ID cannot be null. Please specify the project manager ID.")
   private Long projectManagerId;
 
+  private String projectManagerFirstName;
+
+  private String projectManagerLastName;
+
+  private String projectManagerUsername;
+
   private List<Long> taskIds;
 
   private Long teamId;
+
+  private String teamName;
 
   private List<Long> commentIds;
 }

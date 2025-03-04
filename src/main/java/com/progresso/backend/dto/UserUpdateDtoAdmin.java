@@ -2,13 +2,10 @@ package com.progresso.backend.dto;
 
 import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.model.User;
-import com.progresso.backend.validation.Age;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserRegistrationDto {
+public class UserUpdateDtoAdmin {
 
   @NotBlank(message = "First name cannot be empty. Please provide the first name.")
   @Size(max = 50, message = "First name must be between 2 and 50 characters.")
@@ -31,10 +28,6 @@ public class UserRegistrationDto {
       regexp = "^\\S[a-zA-ZÀ-ÿ\\s]+$",
       message = "Last name cannot start with a space. It can only contain letters and spaces.")
   private String lastName;
-
-  @Past(message = "Birth date must be in the past.")
-  @Age(message = "User must be at least 18 years old.")
-  private LocalDate birthDate;
 
   @NotBlank(message = "Phone number cannot be empty. Please provide the phone number.")
   private String phoneNumber;
@@ -88,7 +81,6 @@ public class UserRegistrationDto {
   public User toEntity(User user) {
     user.setFirstName(firstName);
     user.setLastName(lastName);
-    user.setBirthDate(birthDate);
     user.setPhoneNumber(phoneNumber);
     user.setStreetAddress(streetAddress);
     user.setCity(city);
