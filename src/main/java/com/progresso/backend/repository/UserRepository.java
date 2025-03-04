@@ -18,25 +18,131 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @Query("SELECT COUNT(u) FROM User u WHERE  u.role = :role")
   int countByRole(@Param("role") Role role);
 
-  Page<User> findByRoleAndActiveTrue(Role role, Pageable pageable);
+  @Query("SELECT u FROM User u WHERE "
+      + "(:role IS NULL OR u.role = :role) AND "
+      + "(:active IS NULL OR u.active = :active) AND "
+      + "(:searchTerm IS NULL OR ("
+      + "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(u.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.username)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.username)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.lastName, ' ', u.username)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.username, ' ', u.lastName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.firstName, ' ', u.username)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.username, ' ', u.firstName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.firstName, ' ', u.lastName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.lastName, ' ', u.firstName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%'))"
+      + "))")
+  Page<User> findAllWithFilters(
+      @Param("role") Role role,
+      @Param("active") Boolean active,
+      @Param("searchTerm") String searchTerm,
+      Pageable pageable);
 
-  Page<User> findByFirstNameContainingOrLastNameContainingOrUsernameContainingAndActiveTrue(
-      String firstName,
-      String lastName, String username, Pageable pageable);
+  @Query("SELECT u FROM User u WHERE "
+      + "u.role = 'PROJECTMANAGER' AND "
+      + "u.active = true AND "
+      + "(:searchTerm IS NULL OR ("
+      + "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(u.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.username)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.username)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.lastName, ' ', u.username)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.username, ' ', u.lastName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.firstName, ' ', u.username)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.username, ' ', u.firstName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.firstName, ' ', u.lastName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.lastName, ' ', u.firstName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%'))"
+      + ")) "
+      + "AND ("
+      + "SELECT COUNT(p) FROM Project p "
+      + "WHERE p.projectManager = u "
+      + "AND p.status NOT IN ('CANCELLED', 'COMPLETED')"
+      + ") < 5")
+  Page<User> findAvailableProjectManagers(
+      @Param("searchTerm") String searchTerm,
+      Pageable pageable);
 
-  @Query("SELECT u FROM User u")
-  Page<User> findAllUsers(Pageable pageable);
+  @Query("SELECT u FROM User u WHERE "
+      + "u.role = 'TEAMMEMBER' AND "
+      + "u.active = true AND "
+      + "(:searchTerm IS NULL OR ("
+      + "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(u.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.username)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.username)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.lastName, ' ', u.username)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.username, ' ', u.lastName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.firstName, ' ', u.username)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.username, ' ', u.firstName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.firstName, ' ', u.lastName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.lastName, ' ', u.firstName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%'))"
+      + ")) AND NOT EXISTS ("
+      + "SELECT 1 FROM Team t WHERE t MEMBER OF u.teams AND t.active = true"
+      + ")")
+  Page<User> findAvailableTeamMembers(
+      @Param("searchTerm") String searchTerm,
+      Pageable pageable);
 
-  @Query("SELECT u FROM User u JOIN u.teams t WHERE t.id = :teamId AND u.active = true")
-  Page<User> findUsersByTeamId(@Param("teamId") Long teamId, Pageable pageable);
-
-  @Query("SELECT u FROM User u JOIN u.teams t WHERE t.id = :teamId AND u.id = :userId "
-      + "AND u.active = true")
-  Optional<User> findUserInTeam(@Param("teamId") Long teamId, @Param("userId") Long userId);
-
-  @Query("SELECT u FROM User u JOIN u.assignedTasks t WHERE t.project.id = :projectId "
-      + "AND u.active = true ")
-  Page<User> findUsersByProjectId(@Param("projectId") Long projectId, Pageable pageable);
-
-  Page<User> findByActiveTrue(Pageable pageable);
+  @Query("SELECT u FROM User u JOIN u.teams t WHERE t.id = :teamId AND u.active = true AND "
+      + "(:searchTerm IS NULL OR ("
+      + "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(u.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.username)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.username)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.lastName, ' ', u.username)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.firstName, ' ', u.username, ' ', u.lastName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.firstName, ' ', u.username)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.lastName, ' ', u.username, ' ', u.firstName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.firstName, ' ', u.lastName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR "
+      + "LOWER(CONCAT(u.username, ' ', u.lastName, ' ', u.firstName)) "
+      + "LIKE LOWER(CONCAT('%', :searchTerm, '%'))"
+      + "))")
+  Page<User> findUsersByTeamId(
+      @Param("teamId") Long teamId,
+      @Param("searchTerm") String searchTerm,
+      Pageable pageable);
 }
