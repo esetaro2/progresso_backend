@@ -2,14 +2,12 @@ package com.progresso.backend.exception;
 
 import jakarta.validation.ConstraintViolationException;
 import java.time.format.DateTimeParseException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -17,6 +15,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
   @ExceptionHandler(UserNotFoundException.class)
   @ResponseStatus(HttpStatus.NOT_FOUND)
@@ -34,12 +34,6 @@ public class GlobalExceptionHandler {
   @ResponseStatus(HttpStatus.FORBIDDEN)
   public ResponseEntity<String> handleUserNotActiveException(final UserNotActiveException e) {
     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-  }
-
-  @ExceptionHandler(ActiveTasksException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<String> handleActiveTasksException(final ActiveTasksException e) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
   }
 
   @ExceptionHandler(ActiveProjectsException.class)
@@ -105,16 +99,21 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ResponseEntity<Map<String, String>> handleValidationExceptions(
-      MethodArgumentNotValidException ex) {
-    Map<String, String> errors = new HashMap<>();
+  public ResponseEntity<String> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    StringBuilder errorMessages = new StringBuilder();
+
     ex.getBindingResult().getAllErrors().forEach(error -> {
-      String fieldName = ((FieldError) error).getField();
       String errorMessage = error.getDefaultMessage();
-      errors.put(fieldName, errorMessage);
+      errorMessages.append(errorMessage).append("\n");
     });
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+
+    if (!errorMessages.isEmpty()) {
+      errorMessages.setLength(errorMessages.length() - 1);
+    }
+
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessages.toString());
   }
+
 
   @ExceptionHandler(ConstraintViolationException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -145,7 +144,9 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
   public ResponseEntity<String> handleInternalServerError(Exception ex) {
+    logger.error("An unexpected error occurred", ex);
+
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(ex.getMessage() + "\n" + Arrays.toString(ex.getStackTrace()));
+        .body("An unexpected error occurred. Please try again later.");
   }
 }
