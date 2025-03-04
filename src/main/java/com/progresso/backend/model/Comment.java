@@ -47,4 +47,19 @@ public class Comment {
 
   @Column(nullable = false)
   private Boolean deleted;
+
+  @Override
+  public String toString() {
+    return "Comment{"
+        + "id=" + id
+        + ", content='" + content + '\''
+        + ", creationDate=" + creationDate
+        + ", user=" + (user != null ? "User{id=" + user.getId() + "}" : "null")
+        + ", project=" + (project != null ? "Project{id=" + project.getId() + "}" : "null")
+        + ", parent=" + (parent != null ? "Comment{id=" + parent.getId() + "}" : "null")
+        + ", modified=" + modified
+        + ", modifiedDate=" + modifiedDate
+        + ", deleted=" + deleted
+        + '}';
+  }
 }

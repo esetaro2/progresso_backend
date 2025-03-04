@@ -55,4 +55,21 @@ public class Task {
 
   @ManyToOne(fetch = FetchType.EAGER)
   private User assignedUser;
+
+  @Override
+  public String toString() {
+    return "Task{"
+        + "id=" + id
+        + ", name='" + name + '\''
+        + ", description='" + description + '\''
+        + ", priority=" + priority
+        + ", startDate=" + startDate
+        + ", dueDate=" + dueDate
+        + ", completionDate=" + completionDate
+        + ", status=" + status
+        + ", project=" + (project != null ? "Project{id=" + project.getId() + "}" : "null")
+        + ", assignedUser=" + (assignedUser != null ? "User{id=" + assignedUser.getId() + "}"
+        : "null")
+        + '}';
+  }
 }

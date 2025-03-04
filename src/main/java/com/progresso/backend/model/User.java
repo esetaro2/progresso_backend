@@ -85,4 +85,24 @@ public class User {
 
   @Column(nullable = false)
   private Integer tokenVersion = 0;
+
+  @Override
+  public String toString() {
+    return "User{"
+        + "id=" + id
+        + ", firstName='" + firstName + '\''
+        + ", lastName='" + lastName + '\''
+        + ", birthDate=" + birthDate
+        + ", phoneNumber='" + phoneNumber + '\''
+        + ", streetAddress='" + streetAddress + '\''
+        + ", city='" + city + '\''
+        + ", stateProvinceRegion='" + stateProvinceRegion + '\''
+        + ", country='" + country + '\''
+        + ", zipCode='" + zipCode + '\''
+        + ", email='" + email + '\''
+        + ", username='" + username + '\''
+        + ", role=" + role
+        + ", active=" + active
+        + '}';
+  }
 }

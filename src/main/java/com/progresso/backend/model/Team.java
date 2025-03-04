@@ -35,4 +35,13 @@ public class Team {
 
   @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   private List<Project> projects;
+
+  @Override
+  public String toString() {
+    return "Team{"
+        + "id=" + id
+        + ", name='" + name + '\''
+        + ", active=" + active
+        + '}';
+  }
 }

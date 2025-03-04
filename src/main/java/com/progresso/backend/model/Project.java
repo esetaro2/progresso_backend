@@ -65,4 +65,21 @@ public class Project {
 
   @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   private List<Comment> comments;
+
+  @Override
+  public String toString() {
+    return "Project{"
+        + "id=" + id
+        + ", name='" + name + '\''
+        + ", description='" + description + '\''
+        + ", priority=" + priority
+        + ", startDate=" + startDate
+        + ", dueDate=" + dueDate
+        + ", completionDate=" + completionDate
+        + ", status=" + status
+        + ", projectManager=" + (projectManager != null ? "User{id=" + projectManager.getId() + "}"
+        : "null")
+        + ", team=" + (team != null ? "Team{id=" + team.getId() + "}" : "null")
+        + '}';
+  }
 }
