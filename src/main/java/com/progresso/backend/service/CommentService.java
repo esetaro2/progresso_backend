@@ -77,7 +77,7 @@ public class CommentService {
     return commentDto;
   }
 
-  private Boolean isUserInProject(User user, Project project) {
+  Boolean isUserInProject(User user, Project project) {
     Boolean isInProject =
         project.getTeam().getTeamMembers().contains(user) || project.getProjectManager()
             .equals(user);
@@ -152,6 +152,7 @@ public class CommentService {
     return comments.map(this::convertToDto);
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
   @Transactional
   public CommentDto createComment(CommentDto commentDto) {
     User user = userRepository.findById(commentDto.getUserId())
@@ -181,7 +182,7 @@ public class CommentService {
     if (!user.getRole().equals(Role.ADMIN) && !isUserInProject(user, project)) {
       logger.error("createComment: User {} is not working on project with ID: {}",
           user.getUsername(), project.getId());
-      throw new UserNotActiveException(
+      throw new UserNotFoundException(
           "User " + user.getUsername() + " is not working on this project.");
     }
 
@@ -214,8 +215,17 @@ public class CommentService {
     project.getComments().add(comment);
 
     Comment savedComment = commentRepository.save(comment);
-    logger.info("createComment: Created comment with ID: {} for project with ID: {} by user: {}",
-        savedComment.getId(), project.getId(), user.getUsername());
+
+    if (comment.getParent() != null) {
+      logger.info(
+          "createComment: Created comment with ID: {} with parent with ID: {} for project with ID: {} by user: {}",
+          savedComment.getId(), savedComment.getParent().getId(), project.getId(),
+          user.getUsername());
+    } else {
+      logger.info(
+          "createComment: Created comment with ID: {} for project with ID: {} by user: {}",
+          savedComment.getId(), project.getId(), user.getUsername());
+    }
 
     return convertToDto(savedComment);
   }

@@ -183,17 +183,19 @@ public class TeamService {
 
   @Transactional
   public TeamDto createTeam(String teamName) {
+    if (teamName == null || teamName.isEmpty()) {
+      logger.error("createTeam: Team name cannot be null or empty.");
+      throw new IllegalArgumentException("Team name cannot be null or empty.");
+    }
+
     var finalTeamName = teamName;
     int counter = 1;
 
     while (teamRepository.existsByNameIgnoreCase(finalTeamName)) {
       String suffix = " (" + counter + ")";
-
       if ((finalTeamName.length() + suffix.length()) > 100) {
         finalTeamName = finalTeamName.substring(0, 100 - suffix.length());
-        break;
       }
-
       finalTeamName = finalTeamName + suffix;
       counter++;
     }
@@ -215,6 +217,11 @@ public class TeamService {
       throw new IllegalArgumentException("Team id cannot be null.");
     }
 
+    if (newName == null || newName.isEmpty()) {
+      logger.error("updateTeam: New name cannot be null or empty.");
+      throw new IllegalArgumentException("New name cannot be null or empty.");
+    }
+
     Team team = teamRepository.findById(id)
         .orElseThrow(() -> {
           logger.error("updateTeam: Team not found with ID: {}", id);
@@ -232,12 +239,9 @@ public class TeamService {
       int counter = 1;
       while (teamRepository.existsByNameIgnoreCaseAndIdNot(finalName, id)) {
         String suffix = " (" + counter + ")";
-
         if ((finalName.length() + suffix.length()) > 100) {
           finalName = finalName.substring(0, 100 - suffix.length());
-          break;
         }
-
         finalName = finalName + suffix;
         counter++;
       }

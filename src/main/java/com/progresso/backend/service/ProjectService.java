@@ -380,10 +380,10 @@ public class ProjectService {
     while (projectRepository.existsByNameIgnoreCase(finalName)) {
       String suffix = " (" + counter + ")";
       if ((baseName.length() + suffix.length()) > 100) {
-        finalName = baseName.substring(0, 100 - suffix.length());
-        break;
+        finalName = baseName.substring(0, 100 - suffix.length()) + suffix;
+      } else {
+        finalName = baseName + suffix;
       }
-      finalName = baseName + suffix;
       counter++;
     }
 
@@ -422,7 +422,7 @@ public class ProjectService {
     project.setStartDate(projectDto.getStartDate());
     project.setDueDate(projectDto.getDueDate());
     project.setStatus(Status.NOT_STARTED);
-    project.setPriority(updateProjectPriority(project));
+    project.setPriority(Priority.LOW);
 
     Project savedProject = projectRepository.save(project);
     logger.info("createProject: Created project with name: {}", finalName);
@@ -476,10 +476,10 @@ public class ProjectService {
         while (projectRepository.existsByNameIgnoreCase(finalName)) {
           String suffix = " (" + counter + ")";
           if ((baseName.length() + suffix.length()) > 100) {
-            finalName = baseName.substring(0, 100 - suffix.length());
-            break;
+            finalName = baseName.substring(0, 100 - suffix.length()) + suffix;
+          } else {
+            finalName = baseName + suffix;
           }
-          finalName = baseName + suffix;
           counter++;
         }
       }

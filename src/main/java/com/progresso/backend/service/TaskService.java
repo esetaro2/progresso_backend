@@ -227,7 +227,7 @@ public class TaskService {
     }
 
     logger.info("createAndAssignTask: Created and assigned task {} to user {} for project {}",
-        savedTask.getId(), user.getUsername(), project.getId());
+        savedTask.getName(), user.getUsername(), project.getId());
     return convertToDto(savedTask);
   }
 
