@@ -5,7 +5,6 @@ import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.exception.InvalidRoleException;
 import com.progresso.backend.exception.NoDataFoundException;
-import com.progresso.backend.exception.ProjectNotFoundException;
 import com.progresso.backend.exception.TeamNotFoundException;
 import com.progresso.backend.exception.UserNotActiveException;
 import com.progresso.backend.exception.UserNotFoundException;
@@ -13,7 +12,6 @@ import com.progresso.backend.model.Project;
 import com.progresso.backend.model.Task;
 import com.progresso.backend.model.Team;
 import com.progresso.backend.model.User;
-import com.progresso.backend.repository.ProjectRepository;
 import com.progresso.backend.repository.TaskRepository;
 import com.progresso.backend.repository.TeamRepository;
 import com.progresso.backend.repository.UserRepository;
@@ -36,15 +34,13 @@ public class TeamService {
   private final TeamRepository teamRepository;
   private final UserRepository userRepository;
   private final TaskRepository taskRepository;
-  private final ProjectRepository projectRepository;
 
   @Autowired
   public TeamService(TeamRepository teamRepository, UserRepository userRepository,
-      TaskRepository taskRepository, ProjectRepository projectRepository) {
+      TaskRepository taskRepository) {
     this.teamRepository = teamRepository;
     this.userRepository = userRepository;
     this.taskRepository = taskRepository;
-    this.projectRepository = projectRepository;
   }
 
   private TeamDto convertToDto(Team team) {
@@ -104,20 +100,29 @@ public class TeamService {
     return isProjectManager;
   }
 
-  public TeamDto getTeamByName(String name) {
-    if (name == null || name.isBlank()) {
-      logger.error("getTeamByName: Team name cannot be null or empty.");
-      throw new IllegalArgumentException("Team name cannot be null or empty.");
+  public boolean isTeamMemberOfTeam(Long teamId, String username) {
+    logger.info("Checking if user {} is a member of team {}", username, teamId);
+    if (teamId == null || username == null || username.isEmpty()) {
+      logger.error("isTeamMemberOfTeam: Team ID and username cannot be null or empty.");
+      throw new IllegalArgumentException("Team ID and username cannot be null or empty.");
     }
 
-    Team team = teamRepository.findByNameIgnoreCase(name)
+    userRepository.findByUsername(username)
         .orElseThrow(() -> {
-          logger.error("getTeamByName: Team not found with name: {}", name);
-          return new TeamNotFoundException("Team not found.");
+          logger.error("isTeamMemberOfTeam: User not found with username: {}", username);
+          return new UserNotFoundException("User not found.");
         });
 
-    logger.info("getTeamByName: Team found with name: {}", name);
-    return convertToDto(team);
+    Team team = teamRepository.findById(teamId).orElseThrow(() -> {
+      logger.error("isTeamMemberOfTeam: Team not found with ID: {}", teamId);
+      return new TeamNotFoundException("Team not found.");
+    });
+
+    boolean isMember = team.getTeamMembers().stream().map(User::getUsername)
+        .anyMatch(username::equals);
+    logger.info("User {} is a member of team {}: {}", username, teamId, isMember);
+
+    return isMember;
   }
 
   public TeamDto getTeamById(Long id) {
@@ -137,8 +142,14 @@ public class TeamService {
         });
   }
 
-  public Page<TeamDto> getAllTeams(Pageable pageable) {
-    Page<TeamDto> teamsDto = teamRepository.findAllTeams(pageable).map(this::convertToDto);
+  public Page<TeamDto> getAllTeamsWithFilters(Boolean active, String searchTerm,
+      Pageable pageable) {
+    String processedSearchTerm =
+        (searchTerm != null && !searchTerm.trim().isEmpty()) ? searchTerm.trim() : null;
+
+    Page<TeamDto> teamsDto = teamRepository.findAllTeamsWithFilters(active, processedSearchTerm,
+        pageable).map(this::convertToDto);
+
     if (teamsDto.isEmpty()) {
       logger.warn("getAllTeams: No teams found.");
       throw new NoDataFoundException("No teams found.");
@@ -146,45 +157,6 @@ public class TeamService {
 
     logger.info("getAllTeams: Retrieved {} teams.", teamsDto.getTotalElements());
     return teamsDto;
-  }
-
-  public Page<TeamDto> getTeamsByMemberId(Long userId, Pageable pageable) {
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> {
-          logger.error("getTeamsByMemberId: User not found with ID: {}", userId);
-          return new UserNotFoundException("User not found.");
-        });
-
-    if (!user.getRole().equals(Role.TEAMMEMBER)) {
-      logger.error("getTeamsByMemberId: User {} does not have the required role.",
-          user.getUsername());
-      throw new InvalidRoleException(
-          "User " + user.getUsername() + " does not have the required role.");
-    }
-
-    Page<Team> teams = teamRepository.findByTeamMemberId(userId, pageable);
-
-    if (!teams.hasContent()) {
-      logger.warn("getTeamsByMemberId: No teams found for user with ID: {}", userId);
-      throw new NoDataFoundException("No teams found.");
-    }
-
-    logger.info("getTeamsByMemberId: Retrieved {} teams for user with ID: {}",
-        teams.getTotalElements(), userId);
-    return teams.map(this::convertToDto);
-  }
-
-  public Page<TeamDto> getTeamsWithProjects(Pageable pageable) {
-    Page<Team> teams = teamRepository.findTeamsWithProjects(pageable);
-
-    if (teams.isEmpty()) {
-      logger.warn("getTeamsWithProjects: No teams found with assigned projects.");
-      throw new NoDataFoundException("No teams found with assigned projects.");
-    }
-
-    logger.info("getTeamsWithProjects: Retrieved {} teams with assigned projects.",
-        teams.getTotalElements());
-    return teams.map(this::convertToDto);
   }
 
   @SuppressWarnings("checkstyle:LineLength")
@@ -206,68 +178,6 @@ public class TeamService {
     logger.info(
         "getTeamsWithoutActiveProjects: Retrieved {} teams without active projects for search term: {}",
         teams.getTotalElements(), searchTerm);
-    return teams.map(this::convertToDto);
-  }
-
-  public Page<TeamDto> getTeamsWithMinMembers(int size, Pageable pageable) {
-    Page<Team> teams = teamRepository.findByTeamMembersSizeGreaterThan(size, pageable);
-
-    if (teams.isEmpty()) {
-      logger.warn("getTeamsWithMinMembers: No teams found with more than {} members.", size);
-      throw new NoDataFoundException("No teams found with more than " + size + " members.");
-    }
-
-    logger.info("getTeamsWithMinMembers: Retrieved {} teams with more than {} members.",
-        teams.getTotalElements(), size);
-    return teams.map(this::convertToDto);
-  }
-
-  public Page<TeamDto> getTeamsWithoutMembers(Pageable pageable) {
-    Page<Team> teams = teamRepository.findTeamsWithoutMembers(pageable);
-
-    if (teams.isEmpty()) {
-      logger.warn("getTeamsWithoutMembers: No teams found without members.");
-      throw new NoDataFoundException("No teams found without members.");
-    }
-
-    logger.info("getTeamsWithoutMembers: Retrieved {} teams without members.",
-        teams.getTotalElements());
-    return teams.map(this::convertToDto);
-  }
-
-  public Page<TeamDto> getTeamsByProjectId(Long projectId, Pageable pageable) {
-    if (projectId == null) {
-      logger.error("getTeamsByProjectId: Project ID cannot be null.");
-      throw new IllegalArgumentException("Project ID cannot be null.");
-    }
-
-    projectRepository.findById(projectId)
-        .orElseThrow(() -> {
-          logger.error("getTeamsByProjectId: Project not found with ID: {}", projectId);
-          return new ProjectNotFoundException("Project not found.");
-        });
-
-    Page<Team> teams = teamRepository.findTeamsByProjectId(projectId, pageable);
-
-    if (teams.isEmpty()) {
-      logger.warn("getTeamsByProjectId: No teams found for this project with ID: {}", projectId);
-      throw new NoDataFoundException("No teams found for this project.");
-    }
-
-    logger.info("getTeamsByProjectId: Retrieved {} teams for project with ID: {}",
-        teams.getTotalElements(), projectId);
-    return teams.map(this::convertToDto);
-  }
-
-  public Page<TeamDto> getTeamsByActive(Boolean active, Pageable pageable) {
-    Page<Team> teams = teamRepository.findTeamsByActive(active, pageable);
-
-    if (teams.isEmpty()) {
-      logger.warn("getTeamsByActive: No teams found.");
-      throw new NoDataFoundException("No teams found.");
-    }
-
-    logger.info("getTeamsByActive: Retrieved {} teams.", teams.getTotalElements());
     return teams.map(this::convertToDto);
   }
 
@@ -500,8 +410,9 @@ public class TeamService {
             .equals(Status.CANCELLED));
 
     if (hasActiveProjects) {
-      logger.error("deleteTeam: Cannot delete a team with active projects. Team ID: {}", teamId);
-      throw new IllegalStateException("Cannot delete a team with active projects.");
+      logger.error("deleteTeam: Cannot deactivate a team with active projects. Team ID: {}",
+          teamId);
+      throw new IllegalStateException("Cannot deactivate a team with active projects.");
     }
 
     team.setActive(false);

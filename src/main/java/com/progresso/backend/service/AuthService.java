@@ -1,9 +1,11 @@
 package com.progresso.backend.service;
 
+import com.progresso.backend.dto.UserChangePasswordDto;
 import com.progresso.backend.dto.UserLoginDto;
 import com.progresso.backend.dto.UserLoginResponseDto;
 import com.progresso.backend.dto.UserRegistrationDto;
 import com.progresso.backend.dto.UserResponseDto;
+import com.progresso.backend.dto.UserUpdateDtoAdmin;
 import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.exception.ActiveProjectsException;
@@ -21,6 +23,7 @@ import com.progresso.backend.security.JwtUtil;
 import com.progresso.backend.security.PasswordGenerator;
 import jakarta.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -120,6 +123,88 @@ public class AuthService {
     return userService.convertToDto(user);
   }
 
+  public boolean canChangePassword(Long userId, String username) {
+    User currentUser = userRepository.findByUsername(username)
+        .orElseThrow(() -> new UserNotFoundException("User not found with username: " + username));
+
+    return currentUser.getId().equals(userId);
+  }
+
+  @Transactional
+  public void changePassword(Long userId, UserChangePasswordDto changePasswordDto) {
+    if (userId == null) {
+      logger.error("changePassword: User id cannot be null.");
+      throw new UserNotFoundException("User id cannot be null.");
+    }
+
+    User currentUser = userRepository.findById(userId)
+        .orElseThrow(() -> {
+          logger.error("changePassword: User not found with id: {}", userId);
+          return new UserNotFoundException("User not found.");
+        });
+
+    if (!passwordEncoder.matches(changePasswordDto.getCurrentPassword(),
+        currentUser.getPassword())) {
+      logger.error("changePassword: Current password does not match for user with id: {}", userId);
+      throw new InvalidPasswordException("Current password is incorrect.");
+    }
+
+    if (!changePasswordDto.getNewPassword().equals(changePasswordDto.getConfirmPassword())) {
+      logger.error(
+          "changePassword: New password and confirmation do not match for user with id: {}",
+          userId);
+      throw new InvalidPasswordException("New password and confirmation do not match.");
+    }
+
+    currentUser.setPassword(passwordEncoder.encode(changePasswordDto.getNewPassword()));
+    userRepository.save(currentUser);
+
+    logger.info("changePassword: Password updated successfully for user with id: {}", userId);
+  }
+
+  @Transactional
+  public UserResponseDto updateUserAdmin(Long userId, UserUpdateDtoAdmin userUpdateDtoAdmin) {
+    if (userId == null) {
+      logger.error("updateUserAdmin: User id cannot be null.");
+      throw new UserNotFoundException("User id cannot be null.");
+    }
+
+    User currentUser = userRepository.findById(userId)
+        .orElseThrow(() -> {
+          logger.error("updateUserAdmin: User not found with id: {}", userId);
+          return new UserNotFoundException("User not found.");
+        });
+
+    boolean anyInfoChanged =
+        !currentUser.getFirstName().trim()
+            .equalsIgnoreCase(userUpdateDtoAdmin.getFirstName().trim())
+            || !currentUser.getLastName().trim()
+            .equalsIgnoreCase(userUpdateDtoAdmin.getLastName().trim())
+            || !currentUser.getRole().name().trim()
+            .equalsIgnoreCase(userUpdateDtoAdmin.getRole().trim());
+
+    Optional<User> emailOwner = userRepository.findByEmail(userUpdateDtoAdmin.getEmail());
+    if (emailOwner.isPresent() && !emailOwner.get().getId().equals(userId)) {
+      logger.error("updateUserAdmin: This email already exists: {}", userUpdateDtoAdmin.getEmail());
+      throw new EmailAlreadyExistsException("This email already exists.");
+    }
+
+    User updatedUser = userUpdateDtoAdmin.toEntity(currentUser);
+
+    if (anyInfoChanged) {
+      String newUsername = generateUsername(updatedUser.getFirstName(), updatedUser.getLastName(),
+          updatedUser.getRole());
+      logger.info("updateUserAdmin: Username changed from {} to {}", currentUser.getUsername(),
+          newUsername);
+      updatedUser.setUsername(newUsername);
+    }
+
+    User savedUser = userRepository.save(updatedUser);
+    logger.info("updateUserAdmin: User updated successfully with id: {}", savedUser.getId());
+
+    return userService.convertToDto(savedUser);
+  }
+
   public UserLoginResponseDto authenticateUser(UserLoginDto loginDto) {
     User user = userRepository.findByUsername(loginDto.getUsername())
         .orElseThrow(() -> {
@@ -178,6 +263,9 @@ public class AuthService {
       throw new UserNotActiveException("User is already deactivated.");
     }
 
+    Integer version = incrementTokenVersion(user.getTokenVersion());
+    user.setTokenVersion(version);
+
     List<Project> activeProjects = user.getManagedProjects().stream()
         .filter(project -> project.getStatus() != Status.COMPLETED
             && project.getStatus() != Status.CANCELLED)
@@ -192,11 +280,11 @@ public class AuthService {
           activeProjectsDetails);
       throw new ActiveProjectsException(
           "User is managing active projects:\n" + activeProjectsDetails
-              + "\n Please reassign projects to another project manager.");
+              + ".\n Please reassign projects to another project manager.");
     }
 
     List<Task> activeTasks = user.getAssignedTasks().stream()
-        .filter(task -> !task.getStatus().equals(Status.COMPLETED))
+        .filter(task -> task.getStatus().equals(Status.IN_PROGRESS))
         .peek(task -> task.setAssignedUser(null)).toList();
 
     taskRepository.saveAll(activeTasks);

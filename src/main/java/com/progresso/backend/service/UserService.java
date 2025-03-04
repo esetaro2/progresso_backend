@@ -2,11 +2,10 @@ package com.progresso.backend.service;
 
 import com.progresso.backend.dto.UserLoginResponseDto;
 import com.progresso.backend.dto.UserResponseDto;
+import com.progresso.backend.dto.UserUpdateDtoAdmin;
 import com.progresso.backend.enumeration.Role;
-import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.exception.InvalidRoleException;
 import com.progresso.backend.exception.NoDataFoundException;
-import com.progresso.backend.exception.ProjectNotFoundException;
 import com.progresso.backend.exception.TeamNotFoundException;
 import com.progresso.backend.exception.UserNotFoundException;
 import com.progresso.backend.model.Comment;
@@ -14,18 +13,13 @@ import com.progresso.backend.model.Project;
 import com.progresso.backend.model.Task;
 import com.progresso.backend.model.Team;
 import com.progresso.backend.model.User;
-import com.progresso.backend.repository.ProjectRepository;
 import com.progresso.backend.repository.TeamRepository;
 import com.progresso.backend.repository.UserRepository;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.commons.lang3.EnumUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -37,13 +31,11 @@ public class UserService {
 
   private final UserRepository userRepository;
   private final TeamRepository teamRepository;
-  private final ProjectRepository projectRepository;
 
-  public UserService(UserRepository userRepository, TeamRepository teamRepository,
-      ProjectRepository projectRepository) {
+  public UserService(UserRepository userRepository,
+      TeamRepository teamRepository) {
     this.userRepository = userRepository;
     this.teamRepository = teamRepository;
-    this.projectRepository = projectRepository;
   }
 
   private UserResponseDto convertToDtoCommon(User user) {
@@ -97,12 +89,57 @@ public class UserService {
     }
   }
 
-  public Page<UserResponseDto> getAllUsers(Pageable pageable) {
-    Page<UserResponseDto> usersDto = userRepository.findAllUsers(pageable)
-        .map(this::convertToDtoCommon);
+  public UserUpdateDtoAdmin getUserDetailsAdmin(Long userId) {
+    if (userId == null) {
+      logger.error("getUserDetailsAdmin: User id cannot be null.");
+      throw new IllegalArgumentException("User id cannot be null.");
+    }
+
+    User currentUser = userRepository.findById(userId)
+        .map(user -> {
+          logger.info("getUserDetailsAdmin: User found with id: {}", userId);
+          return user;
+        }).orElseThrow(() -> {
+          logger.error("getUserDetailsAdmin: User not found with id: {}", userId);
+          return new UserNotFoundException("User not found.");
+        });
+
+    return new UserUpdateDtoAdmin(
+        currentUser.getFirstName(), currentUser.getLastName(), currentUser.getPhoneNumber(),
+        currentUser.getStreetAddress(), currentUser.getCity(), currentUser.getStateProvinceRegion(),
+        currentUser.getCountry(), currentUser.getZipCode(), currentUser.getEmail(),
+        currentUser.getRole().name()
+    );
+  }
+
+  @SuppressWarnings("checkstyle:LineLength")
+  public Page<UserResponseDto> getAllUsersWithFilters(Pageable pageable, String searchTerm,
+      String role, Boolean active) {
+    logger.info(
+        "getAllUsersWithFilters: Fetching users with filters - searchTerm: {}, role: {}, active: {}",
+        searchTerm, role, active);
+
+    if (searchTerm != null) {
+      searchTerm = searchTerm.trim().replaceAll("\\s+", " ");
+    }
+
+    Role roleEnum = null;
+    if (role != null && !role.trim().isEmpty()) {
+      roleEnum = EnumUtils.getEnum(Role.class, role.toUpperCase());
+      if (roleEnum == null) {
+        logger.error("getAllUsersWithFilters: Invalid role: {}.", role);
+        throw new InvalidRoleException("Invalid role: " + role + ".");
+      }
+    }
+
+    Page<UserResponseDto> usersDto = userRepository.findAllWithFilters(roleEnum, active, searchTerm,
+        pageable).map(this::convertToDtoCommon);
 
     if (usersDto.isEmpty()) {
-      logger.warn("getAllUsers: No users found.");
+      logger.warn(
+          "getAllUsers: No users found with provided filters - searchTerm: {}, role: {}, active: {} ",
+          searchTerm,
+          role, active);
       throw new NoDataFoundException("No users found.");
     }
 
@@ -115,40 +152,14 @@ public class UserService {
         "getAvailableProjectManagers: Fetching available project managers with search term: {}",
         searchTerm);
 
-    Page<User> page = userRepository.findByRoleAndActiveTrue(Role.PROJECTMANAGER,
-        Pageable.unpaged());
-
-    List<User> filteredUsers = page.getContent().stream()
-        .filter(pm -> {
-          if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-            String[] searchTerms = searchTerm.toLowerCase().trim().split("\\s+");
-            String combinedFields = (pm.getFirstName() + " " + pm.getLastName() + " "
-                + pm.getUsername()).toLowerCase();
-            return Arrays.stream(searchTerms).allMatch(combinedFields::contains);
-          } else {
-            return true;
-          }
-        })
-        .filter(pm -> {
-          long activeProjects = projectRepository.countByProjectManagerAndStatusNotIn(
-              pm, List.of(Status.CANCELLED, Status.COMPLETED));
-          return activeProjects < 5;
-        })
-        .toList();
-
-    int start = (int) pageable.getOffset();
-    int end = Math.min((start + pageable.getPageSize()), filteredUsers.size());
-    List<UserResponseDto> paginatedList;
-
-    if (start <= end) {
-      paginatedList = filteredUsers.subList(start, end).stream()
-          .map(this::convertToDtoCommon)
-          .toList();
-    } else {
-      paginatedList = new ArrayList<>();
+    if (searchTerm != null) {
+      searchTerm = searchTerm.trim().replaceAll("\\s+", " ");
     }
 
-    if (paginatedList.isEmpty()) {
+    Page<UserResponseDto> usersPage = userRepository.findAvailableProjectManagers(
+        searchTerm, pageable).map(this::convertToDtoCommon);
+
+    if (usersPage.isEmpty()) {
       logger.warn(
           "getAvailableProjectManagers: No available project managers found with search term: {}",
           searchTerm);
@@ -156,53 +167,35 @@ public class UserService {
     }
 
     logger.info("getAvailableProjectManagers: Retrieved {} available project managers.",
-        paginatedList.size());
-    return new PageImpl<>(paginatedList, pageable, filteredUsers.size());
+        usersPage.getTotalElements());
+
+    return usersPage;
   }
 
   public Page<UserResponseDto> getAvailableTeamMembers(Pageable pageable, String searchTerm) {
     logger.info("getAvailableTeamMembers: Fetching available team members with searchTerm: {}",
         searchTerm);
 
-    Page<User> page = userRepository.findByRoleAndActiveTrue(Role.TEAMMEMBER, Pageable.unpaged());
-
-    List<User> filteredUsers = page.getContent().stream()
-        .filter(user -> {
-          if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-            String[] searchTerms = searchTerm.toLowerCase().trim().split("\\s+");
-            String combinedFields = (user.getFirstName() + " " + user.getLastName() + " "
-                + user.getUsername())
-                .toLowerCase();
-            return Arrays.stream(searchTerms).allMatch(combinedFields::contains);
-          }
-          return true;
-        })
-        .filter(user -> user.getTeams().stream()
-            .noneMatch(Team::getActive))
-        .toList();
-
-    logger.debug("getAvailableTeamMembers: Filtered users size: {}", filteredUsers.size());
-
-    int start = (int) pageable.getOffset();
-    int end = Math.min((start + pageable.getPageSize()), filteredUsers.size());
-
-    List<UserResponseDto> paginatedList;
-    if (start <= end) {
-      paginatedList = filteredUsers.subList(start, end).stream()
-          .map(this::convertToDtoCommon)
-          .toList();
-    } else {
-      paginatedList = new ArrayList<>();
+    if (searchTerm != null) {
+      searchTerm = searchTerm.trim().replaceAll("\\s+", " ");
     }
 
-    if (paginatedList.isEmpty()) {
-      logger.warn("getAvailableTeamMembers: No available team members found.");
+    Page<UserResponseDto> userPage = userRepository.findAvailableTeamMembers(searchTerm, pageable)
+        .map(this::convertToDtoCommon);
+
+    logger.info("getAvailableTeamMembers: Retrieved {} available team members.",
+        userPage.getTotalElements());
+
+    if (userPage.isEmpty()) {
+      logger.warn("getAvailableTeamMembers: No available team members found with search term: {}",
+          searchTerm);
       throw new NoDataFoundException("No available team members.");
     }
 
     logger.info("getAvailableTeamMembers: Retrieved {} available team members.",
-        paginatedList.size());
-    return new PageImpl<>(paginatedList, pageable, filteredUsers.size());
+        userPage.getTotalElements());
+
+    return userPage;
   }
 
   public Page<UserResponseDto> getUsersByTeamId(Long teamId, Pageable pageable, String searchTerm) {
@@ -217,159 +210,23 @@ public class UserService {
           return new TeamNotFoundException("Team not found.");
         });
 
-    Page<User> page = userRepository.findUsersByTeamId(teamId, Pageable.unpaged());
-
-    List<User> filteredUsers = page.getContent().stream()
-        .filter(user -> {
-          if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-            String[] searchTerms = searchTerm.toLowerCase().trim().split("\\s+");
-            String combinedFields = (user.getFirstName() + " " + user.getLastName() + " "
-                + user.getUsername())
-                .toLowerCase();
-            return Arrays.stream(searchTerms).allMatch(combinedFields::contains);
-          }
-          return true;
-        })
-        .toList();
-
-    logger.debug("getUsersByTeamId: Filtered users size: {}", filteredUsers.size());
-
-    int start = (int) pageable.getOffset();
-    int end = Math.min((start + pageable.getPageSize()), filteredUsers.size());
-
-    List<UserResponseDto> paginatedList;
-    if (start <= end) {
-      paginatedList = filteredUsers.subList(start, end).stream()
-          .map(this::convertToDto)
-          .toList();
-    } else {
-      paginatedList = new ArrayList<>();
+    if (searchTerm != null) {
+      searchTerm = searchTerm.trim().replaceAll("\\s+", " ");
     }
 
-    if (paginatedList.isEmpty()) {
+    Page<UserResponseDto> userPage = userRepository.findUsersByTeamId(teamId, searchTerm, pageable)
+        .map(this::convertToDtoCommon);
+
+    logger.debug("getUsersByTeamId: Filtered users size: {}", userPage.getTotalElements());
+
+    if (userPage.isEmpty()) {
       logger.warn("getUsersByTeamId: No users found in team with ID: {}", teamId);
       throw new NoDataFoundException("No users found in this team.");
     }
 
-    logger.info("getUsersByTeamId: Retrieved {} users for team with ID: {}", paginatedList.size(),
+    logger.info("getUsersByTeamId: Retrieved {} users for team with ID: {}",
+        userPage.getTotalElements(),
         teamId);
-    return new PageImpl<>(paginatedList, pageable, filteredUsers.size());
-  }
-
-  public Page<UserResponseDto> getUsersByRole(String role, Pageable pageable) {
-    if (role == null) {
-      logger.error("getUsersByRole: Role cannot be null.");
-      throw new IllegalArgumentException("Role cannot be null.");
-    }
-
-    Role roleEnum = EnumUtils.getEnum(Role.class, role.toUpperCase());
-
-    if (roleEnum == null) {
-      logger.error("getUsersByRole: Invalid role: {}.", role);
-      throw new InvalidRoleException("Invalid role: " + role + ".");
-    }
-
-    Page<UserResponseDto> usersDto = userRepository.findByRoleAndActiveTrue(roleEnum, pageable)
-        .map(this::convertToDtoCommon);
-
-    if (!usersDto.hasContent()) {
-      logger.warn("getUsersByRole: No users found for role: {}.", role);
-      throw new NoDataFoundException("No users found for role: " + role + ".");
-    }
-
-    logger.info("getUsersByRole: Retrieved {} users for role: {}.", usersDto.getTotalElements(),
-        role);
-    return usersDto;
-  }
-
-  @SuppressWarnings("checkstyle:LineLength")
-  public Page<UserResponseDto> getUsersByFirstNameOrLastNameOrUserName(
-      String firstName, String lastName, String username, Pageable pageable) {
-    if (StringUtils.isAllEmpty(firstName, lastName, username)) {
-      logger.error(
-          "getUsersByFirstNameOrLastNameOrUserName: At least one of the parameters (firstName, lastName, username) is required.");
-      throw new IllegalArgumentException(
-          "At least one of the parameters (firstName, lastName, username) is required.");
-    }
-
-    Page<UserResponseDto> usersDto = userRepository
-        .findByFirstNameContainingOrLastNameContainingOrUsernameContainingAndActiveTrue(
-            firstName, lastName, username, pageable)
-        .map(this::convertToDtoCommon);
-
-    if (usersDto.isEmpty()) {
-      logger.warn(
-          "getUsersByFirstNameOrLastNameOrUserName: No users found for the given search criteria: firstName={}, lastName={}, username={}",
-          firstName, lastName, username);
-      throw new NoDataFoundException("No users found for the given search criteria.");
-    }
-
-    logger.info(
-        "getUsersByFirstNameOrLastNameOrUserName: Retrieved {} users for the given search criteria: firstName={}, lastName={}, username={}",
-        usersDto.getTotalElements(), firstName, lastName, username);
-    return usersDto;
-  }
-
-  public Page<UserResponseDto> getUsersByProjectId(Long projectId, Pageable pageable) {
-    if (projectId == null) {
-      logger.error("getUsersByProjectId: Project ID cannot be null.");
-      throw new IllegalArgumentException("Project ID cannot be null.");
-    }
-
-    projectRepository.findById(projectId)
-        .orElseThrow(() -> {
-          logger.error("getUsersByProjectId: Project not found with ID: {}", projectId);
-          return new ProjectNotFoundException("Project not found.");
-        });
-
-    Page<User> users = userRepository.findUsersByProjectId(projectId, pageable);
-
-    if (users.isEmpty()) {
-      logger.warn("getUsersByProjectId: No users found for this project with ID: {}", projectId);
-      throw new NoDataFoundException("No users found for this project.");
-    }
-
-    logger.info("getUsersByProjectId: Retrieved {} users for project with ID: {}",
-        users.getTotalElements(), projectId);
-    return users.map(this::convertToDto);
-  }
-
-  public UserResponseDto getUserFromTeam(Long teamId, Long userId) {
-    if (teamId == null) {
-      logger.error("getUserFromTeam: Team ID cannot be null.");
-      throw new IllegalArgumentException("Team ID cannot be null.");
-    }
-
-    if (userId == null) {
-      logger.error("getUserFromTeam: User ID cannot be null.");
-      throw new IllegalArgumentException("User ID cannot be null.");
-    }
-
-    teamRepository.findById(teamId)
-        .orElseThrow(() -> {
-          logger.error("getUserFromTeam: Team not found with ID: {}", teamId);
-          return new TeamNotFoundException("Team not found.");
-        });
-
-    User user = userRepository.findUserInTeam(teamId, userId)
-        .orElseThrow(() -> {
-          logger.error("getUserFromTeam: User not found in team with ID: {}", userId);
-          return new UserNotFoundException("This user is not found in this team.");
-        });
-
-    logger.info("getUserFromTeam: User found with ID: {} in team with ID: {}", userId, teamId);
-    return convertToDto(user);
-  }
-
-  public Page<UserResponseDto> findByActiveTrue(Pageable pageable) {
-    Page<User> users = userRepository.findByActiveTrue(pageable);
-
-    if (users.isEmpty()) {
-      logger.warn("findByActiveTrue: No active users found.");
-      throw new NoDataFoundException("No active users found.");
-    }
-
-    logger.info("findByActiveTrue: Retrieved {} active users.", users.getTotalElements());
-    return users.map(this::convertToDto);
+    return userPage;
   }
 }

@@ -15,7 +15,6 @@ import com.progresso.backend.model.Project;
 import com.progresso.backend.model.Task;
 import com.progresso.backend.model.Team;
 import com.progresso.backend.model.User;
-import com.progresso.backend.repository.CommentRepository;
 import com.progresso.backend.repository.ProjectRepository;
 import com.progresso.backend.repository.TaskRepository;
 import com.progresso.backend.repository.TeamRepository;
@@ -43,17 +42,16 @@ public class ProjectService {
   private final UserRepository userRepository;
   private final TeamRepository teamRepository;
   private final TaskRepository taskRepository;
-  private final CommentRepository commentRepository;
+  private final TaskService taskService;
 
   @Autowired
   public ProjectService(ProjectRepository projectRepository, UserRepository userRepository,
-      TeamRepository teamRepository, TaskRepository taskRepository,
-      CommentRepository commentRepository) {
+      TeamRepository teamRepository, TaskRepository taskRepository, TaskService taskService) {
     this.projectRepository = projectRepository;
     this.userRepository = userRepository;
     this.teamRepository = teamRepository;
     this.taskRepository = taskRepository;
-    this.commentRepository = commentRepository;
+    this.taskService = taskService;
   }
 
   public ProjectDto convertToDto(Project project) {
@@ -65,12 +63,19 @@ public class ProjectService {
     dto.setStartDate(project.getStartDate());
     dto.setDueDate(project.getDueDate());
     dto.setCompletionDate(project.getCompletionDate());
+    dto.setCompletionPercentage(
+        !CollectionUtils.isEmpty(project.getTasks()) ? getProjectCompletionPercentage(
+            project.getId()) : null);
     dto.setStatus(project.getStatus().toString());
     dto.setProjectManagerId(project.getProjectManager().getId());
+    dto.setProjectManagerFirstName(project.getProjectManager().getFirstName());
+    dto.setProjectManagerLastName(project.getProjectManager().getLastName());
+    dto.setProjectManagerUsername(project.getProjectManager().getUsername());
     dto.setTaskIds(
         !CollectionUtils.isEmpty(project.getTasks()) ? project.getTasks().stream()
             .map(Task::getId).toList() : new ArrayList<>());
     dto.setTeamId(project.getTeam() != null ? project.getTeam().getId() : null);
+    dto.setTeamName(project.getTeam() != null ? project.getTeam().getName() : null);
     dto.setCommentIds(
         !CollectionUtils.isEmpty(project.getComments()) ? project.getComments().stream().map(
             Comment::getId).toList() : new ArrayList<>());
@@ -175,7 +180,8 @@ public class ProjectService {
           return new ProjectNotFoundException("Project not found.");
         });
 
-    long totalTasks = project.getTasks().size();
+    long totalTasks = project.getTasks().stream()
+        .filter(task -> !task.getStatus().equals(Status.CANCELLED)).count();
     int completedTasks = 0;
 
     for (Task task : project.getTasks()) {
@@ -208,18 +214,21 @@ public class ProjectService {
         (priority != null && EnumUtils.isValidEnum(Priority.class, priority)) ? Priority.valueOf(
             priority) : null;
 
+    String processedSearchTerm =
+        (name != null && !name.trim().isEmpty()) ? name.trim() : null;
+
     Page<Project> projectsPage = projectRepository.findAllWithFilters(statusEnum, priorityEnum,
-        name, pageable);
+        processedSearchTerm, pageable);
 
     if (projectsPage.isEmpty()) {
       logger.warn(
           "findAllProjectsWithFilters: No projects found with the given filters. Status: {}, Priority: {}, Name: {}",
-          statusEnum, priorityEnum, name);
+          statusEnum, priorityEnum, processedSearchTerm);
       throw new NoDataFoundException("No projects found.");
     } else {
       logger.info(
           "findAllProjectsWithFilters: Retrieved {} projects with the given filters. Status: {}, Priority: {}, Name: {}",
-          projectsPage.getTotalElements(), statusEnum, priorityEnum, name);
+          projectsPage.getTotalElements(), statusEnum, priorityEnum, processedSearchTerm);
     }
 
     return getProjectsDto(projectsPage);
@@ -242,19 +251,23 @@ public class ProjectService {
         ? Priority.valueOf(priority)
         : null;
 
+    String processedSearchTerm =
+        (name != null && !name.trim().isEmpty()) ? name.trim() : null;
+
     Page<Project> projectsPage = projectRepository.findByProjectManagerUsernameAndFilters(
-        managerUsername, statusEnum, priorityEnum, name, pageable);
+        managerUsername, statusEnum, priorityEnum, processedSearchTerm, pageable);
 
     if (projectsPage.isEmpty()) {
       logger.warn(
           "findProjectsByProjectManagerUsernameAndFilters: No projects found with the given filters for project manager: {}. Status: {}, Priority: {}, Name: {}",
-          managerUsername, statusEnum, priorityEnum, name);
+          managerUsername, statusEnum, priorityEnum, processedSearchTerm);
       throw new NoDataFoundException(
           "No projects found.");
     } else {
       logger.info(
           "findProjectsByProjectManagerUsernameAndFilters: Retrieved {} projects with the given filters for project manager: {}. Status: {}, Priority: {}, Name: {}",
-          projectsPage.getTotalElements(), managerUsername, statusEnum, priorityEnum, name);
+          projectsPage.getTotalElements(), managerUsername, statusEnum, priorityEnum,
+          processedSearchTerm);
     }
 
     return getProjectsDto(projectsPage);
@@ -278,19 +291,23 @@ public class ProjectService {
         ? Priority.valueOf(priority)
         : null;
 
+    String processedSearchTerm =
+        (name != null && !name.trim().isEmpty()) ? name.trim() : null;
+
     Page<Project> projectsPage = projectRepository.findByTeamMemberUsernameAndFilters(
-        teamMemberUsername, statusEnum, priorityEnum, name, pageable);
+        teamMemberUsername, statusEnum, priorityEnum, processedSearchTerm, pageable);
 
     if (projectsPage.isEmpty()) {
       logger.warn(
           "findProjectsByTeamMemberUsernameAndFilters: No projects found with the given filters for team member: {}. Status: {}, Priority: {}, Name: {}",
-          teamMemberUsername, statusEnum, priorityEnum, name);
+          teamMemberUsername, statusEnum, priorityEnum, processedSearchTerm);
       throw new NoDataFoundException(
           "No projects found.");
     } else {
       logger.info(
           "findProjectsByTeamMemberUsernameAndFilters: Retrieved {} projects with the given filters for team member: {}. Status: {}, Priority: {}, Name: {}",
-          projectsPage.getTotalElements(), teamMemberUsername, statusEnum, priorityEnum, name);
+          projectsPage.getTotalElements(), teamMemberUsername, statusEnum, priorityEnum,
+          processedSearchTerm);
     }
 
     return getProjectsDto(projectsPage);
@@ -313,69 +330,6 @@ public class ProjectService {
 
     logger.info("findProjectById: Retrieved project with ID: {}", id);
     return convertToDto(project);
-  }
-
-  public Page<ProjectDto> findByTeamId(Long teamId, Pageable pageable) {
-    if (teamId == null) {
-      logger.error("findByTeamId: Team id cannot be null.");
-      throw new IllegalArgumentException("Team id cannot be null.");
-    }
-
-    teamRepository.findById(teamId)
-        .orElseThrow(() -> {
-          logger.error("findByTeamId: Team not found with ID: {}", teamId);
-          return new TeamNotFoundException("Team not found.");
-        });
-
-    Page<Project> projectsPage = projectRepository.findByTeamId(teamId, pageable);
-
-    projectsPage.getContent().stream().filter(
-            project -> !project.getStatus().equals(Status.CANCELLED) && !project.getStatus()
-                .equals(Status.COMPLETED))
-        .forEach(project -> project.setPriority(updateProjectPriority(project)));
-
-    Page<ProjectDto> page = projectsPage.map(this::convertToDto);
-
-    if (page.isEmpty()) {
-      logger.warn("findByTeamId: No projects found for the given team with ID: {}", teamId);
-      throw new NoDataFoundException("No projects found for the given team.");
-    }
-
-    logger.info("findByTeamId: Retrieved {} projects for team with ID: {}", page.getTotalElements(),
-        teamId);
-    return page;
-  }
-
-  public Page<ProjectDto> findActiveByTeamId(Long teamId, Pageable pageable) {
-    if (teamId == null) {
-      logger.error("findActiveByTeamId: Team id cannot be null.");
-      throw new IllegalArgumentException("Team id cannot be null.");
-    }
-
-    teamRepository.findById(teamId)
-        .orElseThrow(() -> {
-          logger.error("findActiveByTeamId: Team not found with ID: {}", teamId);
-          return new TeamNotFoundException("Team not found.");
-        });
-
-    Page<Project> projectsPage = projectRepository.findActiveByTeamId(teamId, pageable);
-
-    projectsPage.getContent().stream().filter(
-            project -> !project.getStatus().equals(Status.CANCELLED) && !project.getStatus()
-                .equals(Status.COMPLETED))
-        .forEach(project -> project.setPriority(updateProjectPriority(project)));
-
-    Page<ProjectDto> page = projectsPage.map(this::convertToDto);
-
-    if (page.isEmpty()) {
-      logger.warn("findActiveByTeamId: No active projects found for the given team with ID: {}",
-          teamId);
-      throw new NoDataFoundException("No active projects found for the given team.");
-    }
-
-    logger.info("findActiveByTeamId: Retrieved {} active projects for team with ID: {}",
-        page.getTotalElements(), teamId);
-    return page;
   }
 
   @Transactional
@@ -817,21 +771,12 @@ public class ProjectService {
       throw new IllegalArgumentException("Cannot remove a cancelled project.");
     }
 
-    project.setStatus(Status.CANCELLED);
-
-    List<Long> tasksToRemove = new ArrayList<>();
     if (project.getTasks() != null && !project.getTasks().isEmpty()) {
-      tasksToRemove = project.getTasks().stream().map(Task::getId).toList();
+      project.getTasks()
+          .forEach(task -> taskService.removeTaskFromProject(projectId, task.getId(), true));
     }
 
-    taskRepository.deleteAllById(tasksToRemove);
-
-    List<Long> commentsToRemove = new ArrayList<>();
-    if (!CollectionUtils.isEmpty(project.getComments())) {
-      commentsToRemove = project.getComments().stream().map(Comment::getId).toList();
-    }
-
-    commentRepository.deleteAllById(commentsToRemove);
+    project.setStatus(Status.CANCELLED);
 
     project.setPriority(Priority.LOW);
     Project updatedProject = projectRepository.save(project);
