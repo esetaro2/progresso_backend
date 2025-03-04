@@ -43,19 +43,17 @@ public class AuthService {
   private final UserService userService;
   private final PasswordEncoder passwordEncoder;
   private final JwtUtil jwtUtil;
-  private final EmailService emailService;
   private final TaskRepository taskRepository;
 
   @Autowired
   public AuthService(UserRepository userRepository,
       UserService userService,
       PasswordEncoder passwordEncoder,
-      JwtUtil jwtUtil, EmailService emailService, TaskRepository taskRepository) {
+      JwtUtil jwtUtil, TaskRepository taskRepository) {
     this.userRepository = userRepository;
     this.userService = userService;
     this.passwordEncoder = passwordEncoder;
     this.jwtUtil = jwtUtil;
-    this.emailService = emailService;
     this.taskRepository = taskRepository;
   }
 
@@ -107,17 +105,11 @@ public class AuthService {
     user.setUsername(generateUsername(user.getFirstName(), user.getLastName(), user.getRole()));
 
     String password = PasswordGenerator.generateSecurePassword();
-    logger.info("registerUser: Generated username: {} and password for user: {}",
-        user.getUsername(), user.getFirstName());
+    logger.info("registerUser: Generated username: {} and password: {} for user: {}",
+        user.getUsername(), password, user.getFirstName());
     user.setPassword(passwordEncoder.encode(password));
 
     user = userRepository.save(user);
-
-    String subject = "Your new Progresso Account Details";
-    String message = String.format(
-        "Hello %s,\n\nYour account has been created.\nUsername: %s\nPassword: %s",
-        user.getFirstName(), user.getUsername(), password);
-    emailService.sendMessage(user.getEmail(), subject, message);
 
     logger.info("registerUser: Registered new user with email: {}", user.getEmail());
     return userService.convertToDto(user);
