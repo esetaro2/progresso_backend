@@ -1,11 +1,15 @@
 package com.progresso.backend.controller;
 
-import com.progresso.backend.dto.UserLoginResponseDto;
+import com.progresso.backend.dto.UserChangePasswordDto;
 import com.progresso.backend.dto.UserLoginDto;
+import com.progresso.backend.dto.UserLoginResponseDto;
 import com.progresso.backend.dto.UserRegistrationDto;
 import com.progresso.backend.dto.UserResponseDto;
+import com.progresso.backend.dto.UserUpdateDtoAdmin;
 import com.progresso.backend.service.AuthService;
 import jakarta.validation.Valid;
+import java.util.HashMap;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +34,20 @@ public class AuthController {
     this.authService = authService;
   }
 
+  @PreAuthorize("hasAuthority('ADMIN') or "
+      + "@authService.canChangePassword(#userId, authentication.name)")
+  @PutMapping("/{userId}/change-password")
+  public ResponseEntity<Map<String, String>> changePassword(
+      @PathVariable Long userId,
+      @RequestBody UserChangePasswordDto changePasswordDto) {
+
+    authService.changePassword(userId, changePasswordDto);
+
+    Map<String, String> response = new HashMap<>();
+    response.put("message", "Password changed successfully.");
+    return ResponseEntity.ok(response);
+  }
+
   @PostMapping("/login")
   public ResponseEntity<UserLoginResponseDto> login(@Valid @RequestBody UserLoginDto loginDto) {
     UserLoginResponseDto userDto = authService.authenticateUser(loginDto);
@@ -42,6 +60,15 @@ public class AuthController {
       @Valid @RequestBody UserRegistrationDto registrationDto) {
     UserResponseDto userResponseDto = authService.registerUser(registrationDto);
     return ResponseEntity.status(HttpStatus.CREATED).body(userResponseDto);
+  }
+
+  @PreAuthorize("hasAuthority('ADMIN')")
+  @PutMapping("/update/{userId}/admin")
+  public ResponseEntity<UserResponseDto> updateUserAdmin(@PathVariable Long userId,
+      @Valid @RequestBody UserUpdateDtoAdmin userUpdateDtoAdmin) {
+    UserResponseDto userResponseDto = authService.updateUserAdmin(userId,
+        userUpdateDtoAdmin);
+    return ResponseEntity.ok(userResponseDto);
   }
 
   @PostMapping("/logout")

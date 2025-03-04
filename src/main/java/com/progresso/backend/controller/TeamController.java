@@ -36,8 +36,11 @@ public class TeamController {
 
   @PreAuthorize("hasAuthority('ADMIN')")
   @GetMapping
-  public ResponseEntity<Page<TeamDto>> getAllTeams(Pageable pageable) {
-    Page<TeamDto> teamsDto = teamService.getAllTeams(pageable);
+  public ResponseEntity<Page<TeamDto>> getAllTeams(
+      @RequestParam(required = false) Boolean active,
+      @RequestParam(required = false) String searchTerm,
+      Pageable pageable) {
+    Page<TeamDto> teamsDto = teamService.getAllTeamsWithFilters(active, searchTerm, pageable);
     return ResponseEntity.ok(teamsDto);
   }
 
@@ -45,52 +48,6 @@ public class TeamController {
   public ResponseEntity<TeamDto> getTeamById(@PathVariable Long teamId) {
     TeamDto teamDto = teamService.getTeamById(teamId);
     return ResponseEntity.ok(teamDto);
-  }
-
-  @GetMapping("/search/by-name/{name}")
-  public ResponseEntity<TeamDto> getTeamByName(@PathVariable String name) {
-    TeamDto teamDto = teamService.getTeamByName(name);
-    return ResponseEntity.ok(teamDto);
-  }
-
-  @GetMapping("/active")
-  public ResponseEntity<Page<TeamDto>> getTeamsByActive(
-      @RequestParam Boolean active, Pageable pageable) {
-    Page<TeamDto> teamsDto = teamService.getTeamsByActive(active, pageable);
-    return ResponseEntity.ok(teamsDto);
-  }
-
-  @GetMapping("/user/{userId}")
-  public ResponseEntity<Page<TeamDto>> getTeamsByMemberId(@PathVariable Long userId,
-      Pageable pageable) {
-    Page<TeamDto> teamsDto = teamService.getTeamsByMemberId(userId, pageable);
-    return ResponseEntity.ok(teamsDto);
-  }
-
-  @GetMapping("/with-projects")
-  public ResponseEntity<Page<TeamDto>> getTeamsWithProjects(Pageable pageable) {
-    Page<TeamDto> teamsDto = teamService.getTeamsWithProjects(pageable);
-    return ResponseEntity.ok(teamsDto);
-  }
-
-  @GetMapping("/min-members/{size}")
-  public ResponseEntity<Page<TeamDto>> getTeamsWithMinMembers(@PathVariable int size,
-      Pageable pageable) {
-    Page<TeamDto> teamsDto = teamService.getTeamsWithMinMembers(size, pageable);
-    return ResponseEntity.ok(teamsDto);
-  }
-
-  @GetMapping("/without-members")
-  public ResponseEntity<Page<TeamDto>> getTeamsWithoutMembers(Pageable pageable) {
-    Page<TeamDto> teamsDto = teamService.getTeamsWithoutMembers(pageable);
-    return ResponseEntity.ok(teamsDto);
-  }
-
-  @GetMapping("/by-project/{projectId}")
-  public ResponseEntity<Page<TeamDto>> getTeamsByProjectId(@PathVariable Long projectId,
-      Pageable pageable) {
-    Page<TeamDto> teamsDto = teamService.getTeamsByProjectId(projectId, pageable);
-    return ResponseEntity.ok(teamsDto);
   }
 
   @PreAuthorize("hasAuthority('ADMIN') or hasAuthority('PROJECTMANAGER')")

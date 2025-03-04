@@ -95,20 +95,6 @@ public class ProjectController {
     return ResponseEntity.ok(project);
   }
 
-  @GetMapping("/team/{teamId}")
-  public ResponseEntity<Page<ProjectDto>> findByTeamId(@PathVariable Long teamId,
-      Pageable pageable) {
-    Page<ProjectDto> page = projectService.findByTeamId(teamId, pageable);
-    return ResponseEntity.ok(page);
-  }
-
-  @GetMapping("/team/{teamId}/active")
-  public ResponseEntity<Page<ProjectDto>> findActiveByTeamId(@PathVariable Long teamId,
-      Pageable pageable) {
-    Page<ProjectDto> page = projectService.findActiveByTeamId(teamId, pageable);
-    return ResponseEntity.ok(page);
-  }
-
   @PreAuthorize("hasAuthority('ADMIN')")
   @PostMapping
   public ResponseEntity<ProjectDto> createProject(@Valid @RequestBody ProjectDto projectDto) {
@@ -162,7 +148,9 @@ public class ProjectController {
     return ResponseEntity.ok(updatedProject);
   }
 
-  @PreAuthorize("hasAuthority('ADMIN')")
+  @PreAuthorize("hasAuthority('ADMIN') or "
+      + "(hasAuthority('PROJECTMANAGER') "
+      + "and @projectService.isManagerOfProject(#projectId, authentication.name))")
   @PutMapping("/{projectId}/reassign-team/{teamId}")
   public ResponseEntity<ProjectDto> reassignTeamToProject(
       @PathVariable Long projectId,

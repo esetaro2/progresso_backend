@@ -1,6 +1,7 @@
 package com.progresso.backend.controller;
 
 import com.progresso.backend.dto.UserResponseDto;
+import com.progresso.backend.dto.UserUpdateDtoAdmin;
 import com.progresso.backend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -30,9 +31,19 @@ public class UserController {
   }
 
   @PreAuthorize("hasAuthority('ADMIN')")
+  @GetMapping("/{userId}/details/admin")
+  public ResponseEntity<UserUpdateDtoAdmin> getUserDetailsByUserIdAdmin(@PathVariable Long userId) {
+    return ResponseEntity.ok(userService.getUserDetailsAdmin(userId));
+  }
+
+  @PreAuthorize("hasAuthority('ADMIN')")
   @GetMapping
-  public ResponseEntity<Page<UserResponseDto>> getAllUsers(Pageable pageable) {
-    Page<UserResponseDto> usersDto = userService.getAllUsers(pageable);
+  public ResponseEntity<Page<UserResponseDto>> getAllUsers(Pageable pageable,
+      @RequestParam(required = false) String searchTerm,
+      @RequestParam(required = false) String role,
+      @RequestParam(required = false) Boolean active) {
+    Page<UserResponseDto> usersDto = userService.getAllUsersWithFilters(pageable, searchTerm, role,
+        active);
     return ResponseEntity.ok(usersDto);
   }
 
@@ -55,29 +66,9 @@ public class UserController {
     return ResponseEntity.ok(availableMembers);
   }
 
-  @PreAuthorize("hasAuthority('ADMIN')")
-  @GetMapping("/role/{roleName}")
-  public ResponseEntity<Page<UserResponseDto>> getUsersByRole(
-      @PathVariable String roleName,
-      Pageable pageable) {
-    Page<UserResponseDto> usersDto = userService.getUsersByRole(roleName, pageable);
-    return ResponseEntity.ok(usersDto);
-  }
-
-  @PreAuthorize("hasAuthority('ADMIN')")
-  @GetMapping("/search")
-  public ResponseEntity<Page<UserResponseDto>> searchUsers(
-      @RequestParam(required = false) String firstName,
-      @RequestParam(required = false) String lastName,
-      @RequestParam(required = false) String username,
-      Pageable pageable) {
-    Page<UserResponseDto> usersDto = userService.getUsersByFirstNameOrLastNameOrUserName(
-        firstName, lastName, username, pageable);
-    return ResponseEntity.ok(usersDto);
-  }
-
-  @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
-      + "and @teamService.isProjectManagerOfTeamProjects(#teamId, authentication.name))")
+  @PreAuthorize("hasAuthority('ADMIN') "
+      + "or hasAuthority('PROJECTMANAGER') or (hasAuthority('TEAMMEMBER')"
+      + "and @teamService.isTeamMemberOfTeam(#teamId, authentication.name))")
   @GetMapping("/teams/{teamId}/team-members")
   public ResponseEntity<Page<UserResponseDto>> getUsersByTeamId(
       @PathVariable Long teamId,
@@ -87,28 +78,5 @@ public class UserController {
     Page<UserResponseDto> users = userService.getUsersByTeamId(teamId, pageable, searchTerm);
 
     return ResponseEntity.ok(users);
-  }
-
-  @GetMapping("/teams/{teamId}/user/{userId}")
-  public ResponseEntity<UserResponseDto> getUserFromTeam(@PathVariable Long teamId,
-      @PathVariable Long userId) {
-    UserResponseDto userResponseDto = userService.getUserFromTeam(teamId, userId);
-    return ResponseEntity.ok(userResponseDto);
-  }
-
-  @GetMapping("/projects/{projectId}/users")
-  public ResponseEntity<Page<UserResponseDto>> getUsersByProjectId(
-      @PathVariable Long projectId,
-      Pageable pageable) {
-
-    Page<UserResponseDto> users = userService.getUsersByProjectId(projectId, pageable);
-
-    return ResponseEntity.ok(users);
-  }
-
-  @GetMapping("/active")
-  public ResponseEntity<Page<UserResponseDto>> findActiveUsers(Pageable pageable) {
-    Page<UserResponseDto> activeUsers = userService.findByActiveTrue(pageable);
-    return ResponseEntity.ok(activeUsers);
   }
 }

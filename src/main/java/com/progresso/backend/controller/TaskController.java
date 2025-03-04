@@ -31,12 +31,6 @@ public class TaskController {
     this.taskService = taskService;
   }
 
-  @GetMapping("/{taskId}")
-  public ResponseEntity<TaskDto> getTaskById(@PathVariable Long taskId) {
-    TaskDto taskDto = taskService.findById(taskId);
-    return ResponseEntity.ok(taskDto);
-  }
-
   @PreAuthorize("hasAuthority('ADMIN') or "
       + "(hasAuthority('PROJECTMANAGER') "
       + "and @projectService.isManagerOfProject(#projectId, authentication.name)) or "
@@ -49,14 +43,6 @@ public class TaskController {
       Pageable pageable) {
     Page<TaskDto> tasks = taskService.findByProjectIdAndStatusAndPriority(projectId, status,
         priority, pageable);
-    return ResponseEntity.ok(tasks);
-  }
-
-  @GetMapping("/user/{userId}")
-  public ResponseEntity<Page<TaskDto>> getTasksByUser(
-      @PathVariable Long userId,
-      Pageable pageable) {
-    Page<TaskDto> tasks = taskService.findTasksByUser(userId, pageable);
     return ResponseEntity.ok(tasks);
   }
 
@@ -100,9 +86,9 @@ public class TaskController {
   @PreAuthorize("hasAuthority('ADMIN') or (hasAuthority('PROJECTMANAGER') "
       + "and @projectService.isManagerOfProject(#projectId, authentication.name))")
   @DeleteMapping("/project/{projectId}/task/{taskId}")
-  public ResponseEntity<Void> removeTaskFromProject(@PathVariable Long projectId,
+  public ResponseEntity<TaskDto> removeTaskFromProject(@PathVariable Long projectId,
       @PathVariable Long taskId) {
-    taskService.removeTaskFromProject(projectId, taskId);
-    return ResponseEntity.noContent().build();
+    TaskDto taskDto = taskService.removeTaskFromProject(projectId, taskId, false);
+    return ResponseEntity.ok(taskDto);
   }
 }
