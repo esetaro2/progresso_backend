@@ -5,7 +5,6 @@ import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.model.Project;
 import com.progresso.backend.model.Team;
 import com.progresso.backend.model.User;
-import java.time.LocalDate;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -53,23 +52,14 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
       @Param("name") String name,
       Pageable pageable);
 
-  @Query("SELECT p FROM Project p WHERE p.projectManager.id = :managerId "
-      + "AND p.projectManager.active = true "
-      + "AND p.status != 'COMPLETED' AND p.status != 'CANCELLED'")
-  Page<Project> findActiveByProjectManager(Long managerId, Pageable pageable);
-
-  @Query("SELECT DISTINCT p FROM Project p JOIN p.tasks t WHERE t.status = :taskStatus")
-  Page<Project> findByTaskStatus(Status taskStatus, Pageable pageable);
-
-  Page<Project> findByTeamId(Long teamId, Pageable pageable);
-
-  Page<Project> findByTeamIdAndStatus(Long teamId, Status status, Pageable pageable);
-
-  Page<Project> findByTeamIdAndDueDateBefore(Long teamId, LocalDate dueDate, Pageable pageable);
-
-  @Query("SELECT p FROM Project p WHERE p.team.id = :teamId AND p.team.active = true "
-      + "AND p.status != 'COMPLETED' AND p.status != 'CANCELLED'")
-  Page<Project> findActiveByTeamId(Long teamId, Pageable pageable);
+  @Query("SELECT p FROM Project p "
+      + "JOIN p.team t "
+      + "JOIN t.teamMembers tm "
+      + "WHERE tm.username = :teamMemberUsername "
+      + "AND ((p.status = 'IN_PROGRESS') OR (p.status = 'NOT_STARTED'))")
+  Page<Project> findActiveProjectsByTeamMemberUsername(
+      @Param("teamMemberUsername") String teamMemberUsername,
+      Pageable pageable);
 
   long countByProjectManagerAndStatusNotIn(User projectManager, List<Status> excludedStatus);
 

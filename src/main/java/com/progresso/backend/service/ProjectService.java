@@ -313,6 +313,34 @@ public class ProjectService {
     return getProjectsDto(projectsPage);
   }
 
+  @SuppressWarnings("checkstyle:LineLength")
+  public Page<ProjectDto> findActiveProjectsByTeamMemberUsername(String teamMemberUsername,
+      Pageable pageable) {
+
+    if (teamMemberUsername == null || teamMemberUsername.isEmpty()) {
+      logger.error(
+          "findActiveProjectsByTeamMemberUsername: Team member username cannot be null or empty.");
+      throw new IllegalArgumentException("Team member username cannot be null or empty.");
+    }
+
+    Page<Project> projectsPage = projectRepository.findActiveProjectsByTeamMemberUsername(
+        teamMemberUsername, pageable);
+
+    if (projectsPage.isEmpty()) {
+      logger.warn(
+          "findActiveProjectsByTeamMemberUsername: No active projects found for team member: {}.",
+          teamMemberUsername);
+      throw new NoDataFoundException(
+          "No projects found.");
+    } else {
+      logger.info(
+          "findActiveProjectsByTeamMemberUsername: Retrieved {} active projects for team member: {}.",
+          projectsPage.getTotalElements(), teamMemberUsername);
+    }
+
+    return getProjectsDto(projectsPage);
+  }
+
   public ProjectDto findProjectById(Long id) {
     if (id == null) {
       logger.error("findProjectById: Id cannot be null.");

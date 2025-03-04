@@ -84,6 +84,16 @@ public class ProjectController {
     return ResponseEntity.ok(projects);
   }
 
+  @PreAuthorize("(hasAuthority('TEAMMEMBER') and #teamMemberUsername == authentication.name)")
+  @GetMapping("/active/teamMember/{teamMemberUsername}")
+  public ResponseEntity<Page<ProjectDto>> getActiveProjectsByTeamMemberUsername(
+      @PathVariable String teamMemberUsername,
+      Pageable pageable) {
+    Page<ProjectDto> projects = projectService.findActiveProjectsByTeamMemberUsername(
+        teamMemberUsername, pageable);
+    return ResponseEntity.ok(projects);
+  }
+
   @PreAuthorize("hasAuthority('ADMIN') or "
       + "(hasAuthority('PROJECTMANAGER') "
       + "and @projectService.isManagerOfProject(#id, authentication.name)) or "
