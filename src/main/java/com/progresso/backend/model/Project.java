@@ -36,6 +36,7 @@ public class Project {
   @Column(nullable = false)
   private String description;
 
+  @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private Priority priority;
 
