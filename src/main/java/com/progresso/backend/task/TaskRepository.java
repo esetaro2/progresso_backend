@@ -1,8 +1,8 @@
 package com.progresso.backend.task;
 
+import com.progresso.backend.entity.Task;
 import com.progresso.backend.enumeration.Priority;
 import com.progresso.backend.enumeration.Status;
-import com.progresso.backend.model.Task;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

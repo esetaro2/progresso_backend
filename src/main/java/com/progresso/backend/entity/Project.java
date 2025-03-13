@@ -1,7 +1,8 @@
-package com.progresso.backend.model;
+package com.progresso.backend.entity;
 
 import com.progresso.backend.enumeration.Priority;
 import com.progresso.backend.enumeration.Status;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,7 +13,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import java.time.LocalDate;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,7 +24,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Task {
+public class Project {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,14 +54,21 @@ public class Task {
 
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(nullable = false)
-  private Project project;
+  private User projectManager;
+
+  @OneToMany(mappedBy = "project", cascade = CascadeType.ALL,
+      fetch = FetchType.EAGER)
+  private List<Task> tasks;
 
   @ManyToOne(fetch = FetchType.EAGER)
-  private User assignedUser;
+  private Team team;
+
+  @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+  private List<Comment> comments;
 
   @Override
   public String toString() {
-    return "Task{"
+    return "Project{"
         + "id=" + id
         + ", name='" + name + '\''
         + ", description='" + description + '\''
@@ -67,9 +77,9 @@ public class Task {
         + ", dueDate=" + dueDate
         + ", completionDate=" + completionDate
         + ", status=" + status
-        + ", project=" + (project != null ? "Project{id=" + project.getId() + "}" : "null")
-        + ", assignedUser=" + (assignedUser != null ? "User{id=" + assignedUser.getId() + "}"
+        + ", projectManager=" + (projectManager != null ? "User{id=" + projectManager.getId() + "}"
         : "null")
+        + ", team=" + (team != null ? "Team{id=" + team.getId() + "}" : "null")
         + '}';
   }
 }

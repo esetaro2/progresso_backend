@@ -15,7 +15,7 @@ import com.progresso.backend.dto.UserRegistrationDto;
 import com.progresso.backend.dto.UserResponseDto;
 import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.exception.EmailAlreadyExistsException;
-import com.progresso.backend.model.User;
+import com.progresso.backend.entity.User;
 import com.progresso.backend.user.UserRepository;
 import com.progresso.backend.security.PasswordGenerator;
 import com.progresso.backend.user.UserService;

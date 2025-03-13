@@ -1,7 +1,7 @@
 package com.progresso.backend.team;
 
+import com.progresso.backend.entity.Team;
 import com.progresso.backend.enumeration.Status;
-import com.progresso.backend.model.Team;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

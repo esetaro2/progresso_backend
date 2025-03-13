@@ -1,4 +1,4 @@
-package com.progresso.backend.model;
+package com.progresso.backend.entity;
 
 import com.progresso.backend.enumeration.Role;
 import jakarta.persistence.CascadeType;

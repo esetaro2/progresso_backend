@@ -1,10 +1,10 @@
 package com.progresso.backend.project;
 
+import com.progresso.backend.entity.Project;
+import com.progresso.backend.entity.Team;
+import com.progresso.backend.entity.User;
 import com.progresso.backend.enumeration.Priority;
 import com.progresso.backend.enumeration.Status;
-import com.progresso.backend.model.Project;
-import com.progresso.backend.model.Team;
-import com.progresso.backend.model.User;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

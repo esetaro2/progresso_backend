@@ -1,7 +1,7 @@
 package com.progresso.backend.user;
 
+import com.progresso.backend.entity.User;
 import com.progresso.backend.enumeration.Role;
-import com.progresso.backend.model.User;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

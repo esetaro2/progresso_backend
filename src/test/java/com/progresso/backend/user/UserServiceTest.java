@@ -12,8 +12,8 @@ import com.progresso.backend.dto.UserResponseDto;
 import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.exception.NoDataFoundException;
 import com.progresso.backend.exception.TeamNotFoundException;
-import com.progresso.backend.model.Team;
-import com.progresso.backend.model.User;
+import com.progresso.backend.entity.Team;
+import com.progresso.backend.entity.User;
 import com.progresso.backend.team.TeamRepository;
 import java.util.ArrayList;
 import java.util.List;
@@ -301,9 +301,7 @@ public class UserServiceTest {
 
     when(userRepository.findUsersByTeamId(teamId, null, pageable)).thenReturn(userPage);
 
-    NoDataFoundException exception = assertThrows(NoDataFoundException.class, () -> {
-      userService.getUsersByTeamId(teamId, pageable, null);
-    });
+    NoDataFoundException exception = assertThrows(NoDataFoundException.class, () -> userService.getUsersByTeamId(teamId, pageable, null));
 
     assertEquals("No users found in this team.", exception.getMessage());
 

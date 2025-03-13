@@ -1,6 +1,10 @@
 package com.progresso.backend.team;
 
 import com.progresso.backend.dto.TeamDto;
+import com.progresso.backend.entity.Project;
+import com.progresso.backend.entity.Task;
+import com.progresso.backend.entity.Team;
+import com.progresso.backend.entity.User;
 import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.enumeration.Status;
 import com.progresso.backend.exception.InvalidRoleException;
@@ -8,10 +12,6 @@ import com.progresso.backend.exception.NoDataFoundException;
 import com.progresso.backend.exception.TeamNotFoundException;
 import com.progresso.backend.exception.UserNotActiveException;
 import com.progresso.backend.exception.UserNotFoundException;
-import com.progresso.backend.model.Project;
-import com.progresso.backend.model.Task;
-import com.progresso.backend.model.Team;
-import com.progresso.backend.model.User;
 import com.progresso.backend.task.TaskRepository;
 import com.progresso.backend.user.UserRepository;
 import jakarta.transaction.Transactional;

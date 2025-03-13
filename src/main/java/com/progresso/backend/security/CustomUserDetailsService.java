@@ -1,6 +1,6 @@
 package com.progresso.backend.security;
 
-import com.progresso.backend.model.User;
+import com.progresso.backend.entity.User;
 import com.progresso.backend.user.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

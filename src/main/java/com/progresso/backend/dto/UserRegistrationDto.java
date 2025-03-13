@@ -1,7 +1,7 @@
 package com.progresso.backend.dto;
 
+import com.progresso.backend.entity.User;
 import com.progresso.backend.enumeration.Role;
-import com.progresso.backend.model.User;
 import com.progresso.backend.validation.Age;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

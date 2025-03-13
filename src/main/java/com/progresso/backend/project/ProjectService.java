@@ -1,6 +1,11 @@
 package com.progresso.backend.project;
 
 import com.progresso.backend.dto.ProjectDto;
+import com.progresso.backend.entity.Comment;
+import com.progresso.backend.entity.Project;
+import com.progresso.backend.entity.Task;
+import com.progresso.backend.entity.Team;
+import com.progresso.backend.entity.User;
 import com.progresso.backend.enumeration.Priority;
 import com.progresso.backend.enumeration.Role;
 import com.progresso.backend.enumeration.Status;
@@ -10,11 +15,6 @@ import com.progresso.backend.exception.ProjectNotFoundException;
 import com.progresso.backend.exception.TeamNotFoundException;
 import com.progresso.backend.exception.UserNotActiveException;
 import com.progresso.backend.exception.UserNotFoundException;
-import com.progresso.backend.model.Comment;
-import com.progresso.backend.model.Project;
-import com.progresso.backend.model.Task;
-import com.progresso.backend.model.Team;
-import com.progresso.backend.model.User;
 import com.progresso.backend.task.TaskRepository;
 import com.progresso.backend.task.TaskService;
 import com.progresso.backend.team.TeamRepository;

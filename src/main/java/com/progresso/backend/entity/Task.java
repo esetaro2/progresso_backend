@@ -1,8 +1,7 @@
-package com.progresso.backend.model;
+package com.progresso.backend.entity;
 
 import com.progresso.backend.enumeration.Priority;
 import com.progresso.backend.enumeration.Status;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,9 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import java.time.LocalDate;
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,7 +21,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Project {
+public class Task {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,21 +51,14 @@ public class Project {
 
   @ManyToOne(fetch = FetchType.EAGER)
   @JoinColumn(nullable = false)
-  private User projectManager;
-
-  @OneToMany(mappedBy = "project", cascade = CascadeType.ALL,
-      fetch = FetchType.EAGER)
-  private List<Task> tasks;
+  private Project project;
 
   @ManyToOne(fetch = FetchType.EAGER)
-  private Team team;
-
-  @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-  private List<Comment> comments;
+  private User assignedUser;
 
   @Override
   public String toString() {
-    return "Project{"
+    return "Task{"
         + "id=" + id
         + ", name='" + name + '\''
         + ", description='" + description + '\''
@@ -77,9 +67,9 @@ public class Project {
         + ", dueDate=" + dueDate
         + ", completionDate=" + completionDate
         + ", status=" + status
-        + ", projectManager=" + (projectManager != null ? "User{id=" + projectManager.getId() + "}"
+        + ", project=" + (project != null ? "Project{id=" + project.getId() + "}" : "null")
+        + ", assignedUser=" + (assignedUser != null ? "User{id=" + assignedUser.getId() + "}"
         : "null")
-        + ", team=" + (team != null ? "Team{id=" + team.getId() + "}" : "null")
         + '}';
   }
 }
