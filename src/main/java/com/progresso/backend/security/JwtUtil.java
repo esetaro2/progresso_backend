@@ -2,7 +2,7 @@ package com.progresso.backend.security;
 
 import com.progresso.backend.exception.UserNotFoundException;
 import com.progresso.backend.model.User;
-import com.progresso.backend.repository.UserRepository;
+import com.progresso.backend.user.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
