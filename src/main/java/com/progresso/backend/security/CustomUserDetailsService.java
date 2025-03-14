@@ -1,7 +1,7 @@
 package com.progresso.backend.security;
 
 import com.progresso.backend.entity.User;
-import com.progresso.backend.user.UserRepository;
+import com.progresso.backend.usermanagement.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
