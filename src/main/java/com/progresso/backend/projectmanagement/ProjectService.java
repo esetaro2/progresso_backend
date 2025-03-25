@@ -99,7 +99,7 @@ public class ProjectService {
 
     Priority priority = Priority.LOW;
 
-    if (currentDate.isAfter(startDate)) {
+    if (currentDate.isAfter(startDate) || currentDate.equals(startDate)) {
       long daysRemaining = ChronoUnit.DAYS.between(currentDate, dueDate);
 
       if (daysRemaining <= 7) {
