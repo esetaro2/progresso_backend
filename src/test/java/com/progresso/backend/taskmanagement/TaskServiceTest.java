@@ -581,7 +581,7 @@ public class TaskServiceTest {
     project.setStatus(Status.NOT_STARTED);
     project.setStartDate(LocalDate.now().plusDays(1));
     project.setDueDate(LocalDate.now().plusDays(10));
-    project.setTeam(null); // Il team è null
+    project.setTeam(null);
 
     when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
 
@@ -590,7 +590,7 @@ public class TaskServiceTest {
     user.setUsername("user.notinteam@progresso.com");
     user.setActive(true);
     user.setRole(Role.TEAMMEMBER);
-    user.setAssignedTasks(new ArrayList<>()); // Inizializza la lista delle attività assegnate
+    user.setAssignedTasks(new ArrayList<>());
 
     when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
