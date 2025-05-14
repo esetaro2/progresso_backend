@@ -59,7 +59,7 @@ public class ProjectService {
     dto.setId(project.getId());
     dto.setName(project.getName());
     dto.setDescription(project.getDescription());
-    dto.setPriority(project.getPriority().toString());
+    dto.setPriority(project.getPriority() != null ? project.getPriority().toString() : null);
     dto.setStartDate(project.getStartDate());
     dto.setDueDate(project.getDueDate());
     dto.setCompletionDate(project.getCompletionDate());
@@ -422,7 +422,7 @@ public class ProjectService {
     project.setStartDate(projectDto.getStartDate());
     project.setDueDate(projectDto.getDueDate());
     project.setStatus(Status.NOT_STARTED);
-    project.setPriority(Priority.LOW);
+    project.setPriority(updateProjectPriority(project));
 
     Project savedProject = projectRepository.save(project);
     logger.info("createProject: Created project with name: {}", finalName);
