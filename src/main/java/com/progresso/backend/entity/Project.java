@@ -37,7 +37,6 @@ public class Project {
   private String description;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
   private Priority priority;
 
   @Column(nullable = false)
@@ -72,7 +71,7 @@ public class Project {
         + "id=" + id
         + ", name='" + name + '\''
         + ", description='" + description + '\''
-        + ", priority=" + priority
+        + ", priority=" + (priority != null ? priority : "null")
         + ", startDate=" + startDate
         + ", dueDate=" + dueDate
         + ", completionDate=" + completionDate
