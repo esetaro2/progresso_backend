@@ -3,6 +3,7 @@ package com.progresso.backend.teammanagement;
 import com.progresso.backend.entity.Team;
 import com.progresso.backend.enumeration.Status;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,6 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface TeamRepository extends JpaRepository<Team, Long> {
+
+  Optional<Team> findByNameIgnoreCase(String name);
 
   @Query("SELECT t FROM Team t WHERE (:active IS NULL OR t.active = :active) "
       + "AND (:searchTerm IS NULL OR LOWER(t.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
